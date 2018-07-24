@@ -1,0 +1,3 @@
+v 1.0		reading T-RECS output catalogues and collating to a single file 
+v 1.1 May 2018  doing the projection on the sphere from the cartesian coordinates and allowing re-processing for different field-of-view
+v 1.2 May 2018  format compatible with T-RECS sampler 5.5 and above (x_coord and y_coord fields), not rewriting on latitude and longitude fields
