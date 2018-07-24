@@ -4,3 +4,4 @@ sampler/*.mod
 wrapper/Makefile
 wrapper/*.o
 wrapper/*.mod
+bin/*
