@@ -12,10 +12,10 @@ L_LAPACK=-L/home/bonaldi/libraries/ -llapack
 LDFLAGS = 
 
 INCLUDE := $(I_CFITSIO) $(I_HEALPIX) 
-LINK := $(LINK) $(L_HEALPIX) $(L_CFITSIO) $(LDFLAGS) 
+LINK := $(LINK) $(L_HEALPIX) $(L_CFITSIO) $(L_LAPACK)  $(LDFLAGS) 
 
 
-OBJ := sampler_io.o random_modules.o sampler_modules.o sampler.o liblapack.so
+OBJ := sampler_io.o random_modules.o sampler_modules.o sampler.o 
 default: all
 all : $(OBJ)
 	$(F90) $(F90FLAGS) -o ../bin/sampler $(OBJ) $(LINK) 
