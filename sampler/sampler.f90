@@ -187,26 +187,26 @@ program sampler
   !    AGNs
   !
   !effective spectral indices for AGNs
-  filename1='../../Inputs/alphaeff/alphascaling_flat_1.4_4.8.txt' ! 1.4-4.8 GHz flat 
-  filename2='../../Inputs/alphaeff/alphascaling_steep_1.4_4.8.txt' ! 1.4-4.8 GHz steep 
-  filename3='../../Inputs/alphaeff/alphascaling_flat_4.8_20.0.txt' ! 4.8-20 GHz flat 
-  filename4='../../Inputs/alphaeff/alphascaling_steep_4.8_20.0.txt' ! 4.8-20 GHz steep 
-  filename5='../../Inputs/alphaeff/alphascaling_flat_pol_1.4_4.8.txt' ! 1.4-4.8 GHz flat polarization
-  filename6='../../Inputs/alphaeff/alphascaling_flat_pol_4.8_20.0.txt' ! 4.8-20 GHz flat polarization 
+  filename1='../../TRECS_Inputs/alphaeff/alphascaling_flat_1.4_4.8.txt' ! 1.4-4.8 GHz flat 
+  filename2='../../TRECS_Inputs/alphaeff/alphascaling_steep_1.4_4.8.txt' ! 1.4-4.8 GHz steep 
+  filename3='../../TRECS_Inputs/alphaeff/alphascaling_flat_4.8_20.0.txt' ! 4.8-20 GHz flat 
+  filename4='../../TRECS_Inputs/alphaeff/alphascaling_steep_4.8_20.0.txt' ! 4.8-20 GHz steep 
+  filename5='../../TRECS_Inputs/alphaeff/alphascaling_flat_pol_1.4_4.8.txt' ! 1.4-4.8 GHz flat polarization
+  filename6='../../TRECS_Inputs/alphaeff/alphascaling_flat_pol_4.8_20.0.txt' ! 4.8-20 GHz flat polarization 
 
   !polarization fractions, Galluzzi et l. and Hales et al. 
-  filename7='../../Inputs/AGN_polafraction/Polfrac_AGNs_1e4_hales.dat' 
+  filename7='../../TRECS_Inputs/AGN_polafraction/Polfrac_AGNs_1e4_hales.dat' 
 
   !characteristic luminosity: redshift bins
-  filename8='../../Inputs/LF/CharLum/Characteristic_Luminosity/z_bins.dat'
+  filename8='../../TRECS_Inputs/LF/CharLum/Characteristic_Luminosity/z_bins.dat'
 
   !Intrinsic AGN size distribution from DiPompeo et al.
-  filename9='../../Inputs/LF/AGN_sizes.dat'  
+  filename9='../../TRECS_Inputs/LF/AGN_sizes.dat'  
 
   !   SFGs
   !
   !dust SED
-  filename10='../../Inputs/LF/SEDdust.dat'!nu, UVgal, spheroids, lens_spheroids
+  filename10='../../TRECS_Inputs/LF/SEDdust.dat'!nu, UVgal, spheroids, lens_spheroids
 
   ! end filenames
   !**********************************************************
@@ -484,7 +484,7 @@ program sampler
   close(iunit)
 
   !reading the first characteristic luminosity file to get dimension of fiels for later
-  AGN_filename='../../Inputs/LF/CharLum/Characteristic_Luminosity/luminosity_0.01000.dat' 
+  AGN_filename='../../TRECS_Inputs/LF/CharLum/Characteristic_Luminosity/luminosity_0.01000.dat' 
   Ncolumns=6
   Ncolumns_lf=Ncolumns
   nrows=rows_number(AGN_filename,1,nskip)
@@ -556,8 +556,8 @@ program sampler
         zstr=redshift_names(zi) ! redshift tag for files
 
         !files for AGN mass modelling
-        LERG_filename='../../Inputs/AbundanceMatch/results_AGNs/AGNprob_LERG_z'//zstr//'.txt' 
-        HERG_filename='../../Inputs/AbundanceMatch/results_AGNs/AGNprob_HERG_z'//zstr//'.txt' 
+        LERG_filename='../../TRECS_Inputs/AbundanceMatch/results_AGNs/AGNprob_LERG_z'//zstr//'.txt' 
+        HERG_filename='../../TRECS_Inputs/AbundanceMatch/results_AGNs/AGNprob_HERG_z'//zstr//'.txt' 
 
         !reading files for AGN mass modelling 
         Ncolumns=2
@@ -583,7 +583,7 @@ program sampler
            ! preprocessing for AGN clustering:
            ! reading the slice of lightcone with dark halo masses and their position
 
-           cone_filename='../../Inputs/cones/cone_5X5_z'//zstr//'.txt_sort' 
+           cone_filename='../../TRECS_Inputs/cones/cone_5X5_z'//zstr//'.txt_sort' 
            Ncolumns=4
            nrows=rows_number(cone_filename,1,nskip)
            Nhaloes=nrows
@@ -718,7 +718,7 @@ program sampler
                  frequencies_rest=frequencies*(1.+zlum) !freq in the rest frame (for K correction)
 
                  !read luminosities 
-                 AGN_filename='../../Inputs/LF/CharLum/Characteristic_Luminosity/luminosity_'//zstr_long//'.dat'  
+                 AGN_filename='../../TRECS_Inputs/LF/CharLum/Characteristic_Luminosity/luminosity_'//zstr_long//'.dat'  
 
                  call read_columns(AGN_filename,2,nrows_lf,Ncolumns_lf,nskip,data)
 
@@ -1404,7 +1404,7 @@ program sampler
 
         !relation between L14 and mass of dark halo, from abundance matching
         ! reading from a file
-        SFR2Mh_filename='../../Inputs/AbundanceMatch/results_LSFR/L2mh_z'//zstr//'.txt' 
+        SFR2Mh_filename='../../TRECS_Inputs/AbundanceMatch/results_LSFR/L2mh_z'//zstr//'.txt' 
         Ncolumns=2
         nrows=rows_number(SFR2Mh_filename,1,nskip)
         Nfunction=nrows
@@ -1421,7 +1421,7 @@ program sampler
         if (do_clustering==1) then 
 
            ! reading data for the lightcone redhsift slice 
-           cone_filename='../../Inputs/cones/cone_5X5_z'//zstr//'.txt_sort' 
+           cone_filename='../../TRECS_Inputs/cones/cone_5X5_z'//zstr//'.txt_sort' 
            Ncolumns=4
 
            nrows=rows_number(cone_filename,1,nskip)
@@ -1509,7 +1509,7 @@ program sampler
 
 
         !Reading SFR rate functins, from Mancuso et al. 
-        SFR_filename='../../Inputs/SFRF/SFRF_z'//zstr//'.dat'  
+        SFR_filename='../../TRECS_Inputs/SFRF/SFRF_z'//zstr//'.dat'  
 
         Ncolumns=5
         nrows=rows_number(SFR_filename,1,nskip)
@@ -1712,7 +1712,7 @@ program sampler
            ! galaxies as satellites to big haloes:
            ! read mass probability distribution
 
-           filename='../../Inputs/AbundanceMatch/results_satellites/Satelliteprob_z'//zstr//'.txt' 
+           filename='../../TRECS_Inputs/AbundanceMatch/results_satellites/Satelliteprob_z'//zstr//'.txt' 
 
            Ncolumns=2
            nrows=rows_number(filename,1,nskip)
