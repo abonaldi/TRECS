@@ -6,8 +6,14 @@ To build the package for the first time:
 
 1) download the archive 
 
-which contains input files with all the models used by the sampler code. Once extracted, copy the folder without renaming it in the same folder where the T-RECS folder is. 
 
+which contains input files with all the models used by the sampler code. Once extracted, 
+
+tar -xvf TRECS_Inputs.tgz
+
+move the folder without renaming it in the same folder where the T-RECS code folder is. Your folder should now contain: 
+
+TRECS  TRECS_Inputs
 
 2) check that you have a fortran compiler and these libraries are installed: GSL, Lapack, Healpix, cfitsio
 
