@@ -187,26 +187,26 @@ program sampler
   !    AGNs
   !
   !effective spectral indices for AGNs
-  filename1='../../TRECS_Inputs/alphaeff/alphascaling_flat_1.4_4.8.txt' ! 1.4-4.8 GHz flat 
-  filename2='../../TRECS_Inputs/alphaeff/alphascaling_steep_1.4_4.8.txt' ! 1.4-4.8 GHz steep 
-  filename3='../../TRECS_Inputs/alphaeff/alphascaling_flat_4.8_20.0.txt' ! 4.8-20 GHz flat 
-  filename4='../../TRECS_Inputs/alphaeff/alphascaling_steep_4.8_20.0.txt' ! 4.8-20 GHz steep 
-  filename5='../../TRECS_Inputs/alphaeff/alphascaling_flat_pol_1.4_4.8.txt' ! 1.4-4.8 GHz flat polarization
-  filename6='../../TRECS_Inputs/alphaeff/alphascaling_flat_pol_4.8_20.0.txt' ! 4.8-20 GHz flat polarization 
+  filename1='../../Inputs/alphaeff/alphascaling_flat_1.4_4.8.txt' ! 1.4-4.8 GHz flat 
+  filename2='../../Inputs/alphaeff/alphascaling_steep_1.4_4.8.txt' ! 1.4-4.8 GHz steep 
+  filename3='../../Inputs/alphaeff/alphascaling_flat_4.8_20.0.txt' ! 4.8-20 GHz flat 
+  filename4='../../Inputs/alphaeff/alphascaling_steep_4.8_20.0.txt' ! 4.8-20 GHz steep 
+  filename5='../../Inputs/alphaeff/alphascaling_flat_pol_1.4_4.8.txt' ! 1.4-4.8 GHz flat polarization
+  filename6='../../Inputs/alphaeff/alphascaling_flat_pol_4.8_20.0.txt' ! 4.8-20 GHz flat polarization 
 
   !polarization fractions, Galluzzi et l. and Hales et al. 
-  filename7='../../TRECS_Inputs/AGN_polafraction/Polfrac_AGNs_1e4_hales.dat' 
+  filename7='../../Inputs/AGN_polafraction/Polfrac_AGNs_1e4_hales.dat' 
 
   !characteristic luminosity: redshift bins
-  filename8='../../TRECS_Inputs/LF/CharLum/Characteristic_Luminosity/z_bins.dat'
+  filename8='../../Inputs/LF/CharLum/Characteristic_Luminosity/z_bins.dat'
 
   !Intrinsic AGN size distribution from DiPompeo et al.
-  filename9='../../TRECS_Inputs/LF/AGN_sizes.dat'  
+  filename9='../../Inputs/LF/AGN_sizes.dat'  
 
   !   SFGs
   !
   !dust SED
-  filename10='../../TRECS_Inputs/LF/SEDdust.dat'!nu, UVgal, spheroids, lens_spheroids
+  filename10='../../Inputs/LF/SEDdust.dat'!nu, UVgal, spheroids, lens_spheroids
 
   ! end filenames
   !**********************************************************
@@ -484,7 +484,7 @@ program sampler
   close(iunit)
 
   !reading the first characteristic luminosity file to get dimension of fiels for later
-  AGN_filename='../../TRECS_Inputs/LF/CharLum/Characteristic_Luminosity/luminosity_0.01000.dat' 
+  AGN_filename='../../Inputs/LF/CharLum/Characteristic_Luminosity/luminosity_0.01000.dat' 
   Ncolumns=6
   Ncolumns_lf=Ncolumns
   nrows=rows_number(AGN_filename,1,nskip)
@@ -496,22 +496,22 @@ program sampler
   ! this are the central redhifts at which the Bonato et al. 1.4 GHz luminosity functions are provided.  
   ! the lightcone for AGNs has been binned in the same way. 
   !each redshift slice is processed independently. execution can be parallelised in redhift bins
-  nreds=67
+ 
+  nreds=57 !SF gals until z=8 (where I have cone)
   nreds_out=nreds
 
   allocate(redshifts(nreds),redshift_names(nreds))
 
-  redshifts=(/0.01,0.02,0.05,0.10,0.15,0.20,0.25,0.30,0.35,0.40,0.45,0.50,&
-       0.55,0.60,0.65,0.70,0.75,0.80,0.85,0.90,0.95,1.00,1.10,1.20,1.30,1.40,1.50,&
-       1.60,1.70,1.80,1.90,2.00,2.10,2.20,2.30,2.40,2.50,2.60,2.70,2.80,2.90,3.00,&
-       3.10,3.20,3.30,3.40,3.50,3.60,3.70,3.80,3.90,4.00,4.10,4.20,4.30,4.40,4.50,&
-       4.60,4.70,4.80,4.90,5.00,5.50,6.00,6.50,7.00,7.50,8.00/)
+  redshifts=(/0.01,0.02,0.05,0.10,0.15,0.20,0.25,0.30,0.35,0.40,0.45,0.50,0.55,&
+       0.60,0.65,0.70,0.75,0.80,0.85,0.90,0.95,1.00,1.20,1.40,1.60,1.80,2.00,2.20,2.40,&
+       2.60,2.80,3.00,3.20,3.40,3.60,3.80,4.00,4.20,4.40,4.60,4.80,5.00,5.20,5.40,5.60,5.80,&
+       6.00,6.20,6.40,6.60,6.80,7.00,7.20,7.40,7.60,7.80,8.00,8.20,8.40,8.60,8.80,9.00,9.20,9.40,9.60,9.80,10.00/)
 
-  redshift_names=(/'0.01','0.02','0.05','0.10','0.15','0.20','0.25','0.30','0.35','0.40','0.45',&
-       '0.50','0.55','0.60','0.65','0.70','0.75','0.80','0.85','0.90','0.95','1.00','1.10','1.20','1.30'&
-       ,'1.40','1.50','1.60','1.70','1.80','1.90','2.00','2.10','2.20','2.30','2.40','2.50','2.60','2.70'&
-       ,'2.80','2.90','3.00','3.10','3.20','3.30','3.40','3.50','3.60','3.70','3.80','3.90','4.00','4.10'&
-       ,'4.20','4.30','4.40','4.50','4.60','4.70','4.80','4.90','5.00','5.50','6.00','6.50','7.00','7.50','8.00'/)
+  redshift_names=(/'0.01','0.02','0.05','0.10','0.15','0.20','0.25','0.30','0.35','0.40','0.45','0.50',&
+       '0.55','0.60','0.65','0.70','0.75','0.80','0.85','0.90','0.95','1.00','1.20','1.40','1.60','1.80','2.00'&
+       ,'2.20','2.40','2.60','2.80','3.00','3.20','3.40','3.60','3.80','4.00','4.20','4.40','4.60','4.80','5.00'&
+       ,'5.20','5.40','5.60','5.80','6.00','6.20','6.40','6.60','6.80','7.00','7.20','7.40','7.60','7.80','8.00',&
+       '8.20','8.40','8.60','8.80','9.00','9.20','9.40','9.60','9.80','10.0'/)
 
 
   if (zmax < maxval(redshifts)) then
@@ -556,8 +556,8 @@ program sampler
         zstr=redshift_names(zi) ! redshift tag for files
 
         !files for AGN mass modelling
-        LERG_filename='../../TRECS_Inputs/AbundanceMatch/results_AGNs/AGNprob_LERG_z'//zstr//'.txt' 
-        HERG_filename='../../TRECS_Inputs/AbundanceMatch/results_AGNs/AGNprob_HERG_z'//zstr//'.txt' 
+        LERG_filename='../../Inputs/AbundanceMatch/results_AGNs/AGNprob_LERG_z'//zstr//'.txt' 
+        HERG_filename='../../Inputs/AbundanceMatch/results_AGNs/AGNprob_HERG_z'//zstr//'.txt' 
 
         !reading files for AGN mass modelling 
         Ncolumns=2
@@ -583,7 +583,7 @@ program sampler
            ! preprocessing for AGN clustering:
            ! reading the slice of lightcone with dark halo masses and their position
 
-           cone_filename='../../TRECS_Inputs/cones_agns/cone_5X5_z'//zstr//'.txt_sort' 
+           cone_filename='../../Inputs/cones/cone_5X5_z'//zstr//'.txt_sort' 
            Ncolumns=4
            nrows=rows_number(cone_filename,1,nskip)
            Nhaloes=nrows
@@ -718,7 +718,7 @@ program sampler
                  frequencies_rest=frequencies*(1.+zlum) !freq in the rest frame (for K correction)
 
                  !read luminosities 
-                 AGN_filename='../../TRECS_Inputs/LF/CharLum/Characteristic_Luminosity/luminosity_'//zstr_long//'.dat'  
+                 AGN_filename='../../Inputs/LF/CharLum/Characteristic_Luminosity/luminosity_'//zstr_long//'.dat'  
 
                  call read_columns(AGN_filename,2,nrows_lf,Ncolumns_lf,nskip,data)
 
@@ -1260,6 +1260,7 @@ program sampler
   if (no_SFG /=0) goto 0202  ! skip SFG if needed
 !  nreds=67  !SF gals
 !  if (do_clustering==1)  
+
   nreds=57 !SF gals until z=8 (where I have cone)
   nreds_out=nreds
 
@@ -1275,6 +1276,9 @@ program sampler
        ,'2.20','2.40','2.60','2.80','3.00','3.20','3.40','3.60','3.80','4.00','4.20','4.40','4.60','4.80','5.00'&
        ,'5.20','5.40','5.60','5.80','6.00','6.20','6.40','6.60','6.80','7.00','7.20','7.40','7.60','7.80','8.00',&
        '8.20','8.40','8.60','8.80','9.00','9.20','9.40','9.60','9.80','10.0'/)
+
+
+
 
   if (zmax < maxval(redshifts)) then
      nreds_out=0
@@ -1400,7 +1404,7 @@ program sampler
 
         !relation between L14 and mass of dark halo, from abundance matching
         ! reading from a file
-        SFR2Mh_filename='../../TRECS_Inputs/AbundanceMatch/results_LSFR/L2mh_z'//zstr//'.txt' 
+        SFR2Mh_filename='../../Inputs/AbundanceMatch/results_LSFR/L2mh_z'//zstr//'.txt' 
         Ncolumns=2
         nrows=rows_number(SFR2Mh_filename,1,nskip)
         Nfunction=nrows
@@ -1417,7 +1421,7 @@ program sampler
         if (do_clustering==1) then 
 
            ! reading data for the lightcone redhsift slice 
-           cone_filename='../../TRECS_Inputs/cones_sfgs/cone_5X5_z'//zstr//'.txt_sort' 
+           cone_filename='../../Inputs/cones/cone_5X5_z'//zstr//'.txt_sort' 
            Ncolumns=4
 
            nrows=rows_number(cone_filename,1,nskip)
@@ -1505,7 +1509,7 @@ program sampler
 
 
         !Reading SFR rate functins, from Mancuso et al. 
-        SFR_filename='../../TRECS_Inputs/SFRF/SFRF_z'//zstr//'.dat'  
+        SFR_filename='../../Inputs/SFRF/SFRF_z'//zstr//'.dat'  
 
         Ncolumns=5
         nrows=rows_number(SFR_filename,1,nskip)
@@ -1526,14 +1530,38 @@ program sampler
         names(3)='lens_spheroids'
 
 
+
+
         do ii=1,3 !loop on SFR populations  
 
            print*,'beginning loop'
            px=(10.**data(:,ii+2)) !phi(logSFR)
+
+
+
+! quick calculation of max radioflux at the selection frequency to avoid generating galaxies which will be discarded
+           call Ldust(frequencies_rest,dustsed,dif,ii,Ld) 
+           do iii=1,nrows
+              sfr=10.**x(iii)
+              !flux= synchrotron + free-free+dust
+              call Lsynch(frequencies_rest,sfr,Lsyn) !Lsyn is average value 
+              call Lff(frequencies_rest,sfr,Lfree) 
+              !syn+ff with a scatter (evolution relation by Magnelli et al. )
+              test=5. !max value for the gaussian random number, giving maximum possible flux for the source
+              
+              delta=10.0000**(log10(Lsyn+Lfree)+test*0.4000+2.3500*(1.0000 -(1.0000 +z)**(-0.1200))) 
+              if (minval(delta)<0.) delta(:)=0. 
+          !    Lums(i)=dlog10(delta(i14)+Ld(i14)*sfr) 
+              test=(delta(ilim)+Ld(ilim)*sfr)*conv_flux ! add dust SED
+              if (test < fluxlim*1000.) px(iii)=0.
+
+           enddo
+
            integ=trapint(x,px) ! integral with trapezium rule for the PDF, to give the number of galaxies 
 
-           print*,'number of '//names(ii)//'galaxies for Mpc**3',integ
 
+
+           print*,'number of '//names(ii)//'galaxies for Mpc**3',integ
 
            norm=volume*integ/sum(px) ! normalisation for histogram 
            Ngen_db=volume*integ
@@ -1546,7 +1574,7 @@ program sampler
            if (iostat /= 0.) then 
               print*,'deallocation error poisson numbers!'
            endif
-           ! Poisson sampling to get number of obect per SFR bin from the PDF
+           ! Poisson sampling to get number of object per SFR bin from the PDF
            do i=1,N
               mu=real(Px(i)*norm)
               Nran=random_Poisson(mu, first)! integer from poisson distribution with mean mu
@@ -1554,6 +1582,9 @@ program sampler
            enddo
            Nsample=sum(poisson_numbers) ! this is the number of galaxies to be generated
 
+
+!print*,poisson_numbers
+!stop
            if (Nsample==0) then
               deallocate(poisson_numbers)
               goto 500
@@ -1587,6 +1618,7 @@ program sampler
            deallocate(poisson_numbers)
            print*,'SFRs generated'
 
+!print*,'allocating'
            !vectors to store luminosities and total intensity flux
            allocate(radioflux(Nfreq,Nsample),lums(Nsample),stat=iostat)
            if (iostat /= 0) then
@@ -1594,25 +1626,27 @@ program sampler
               stop
            endif
 
+!print*,'done'
            Nsample_surv=0 ! initialise counter for number of object above flux threshold
 
            !select the points in dustsed that correspond to the frequencies at the current redshift 
            call Ldust(frequencies_rest,dustsed,dif,ii,Ld) 
            ! this if the same for the same redshift slice. need to be multiplied by sfr 
 
+!print*,'ok',Nsample
+!stop
            do i=1,Nsample
+
               sfr=10.**samplex(i)
               !flux= synchrotron + free-free+dust
               call Lsynch(frequencies_rest,sfr,Lsyn) !Lsyn is average value 
               call Lff(frequencies_rest,sfr,Lfree) 
-
               !syn+ff with a scatter (evolution relation by Magnelli et al. )
               delta=10.0000**(log10(Lsyn+Lfree)+randgauss_boxmuller(iseed)*0.4000+2.3500*(1.0000 -(1.0000 +z)**(-0.1200))) 
               if (minval(delta)<0.) delta(:)=0. 
               Lums(i)=dlog10(delta(i14)+Ld(i14)*sfr) 
               Radioflux(:,i)=(delta+Ld*sfr)*conv_flux ! add dust SED
               if (Radioflux(ilim,i)>= fluxlim*1000.) Nsample_surv= Nsample_surv+1  ! implement flux threshold
-
            enddo
 
            print*,'Number of galaxies above flux limit',Nsample_surv
@@ -1678,7 +1712,7 @@ program sampler
            ! galaxies as satellites to big haloes:
            ! read mass probability distribution
 
-           filename='../../TRECS_Inputs/AbundanceMatch/results_satellites/Satelliteprob_z'//zstr//'.txt' 
+           filename='../../Inputs/AbundanceMatch/results_satellites/Satelliteprob_z'//zstr//'.txt' 
 
            Ncolumns=2
            nrows=rows_number(filename,1,nskip)
