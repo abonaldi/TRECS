@@ -385,10 +385,8 @@ contains
   subroutine poisson_constrained(iseed,x,Px,xmin_prior,xmax_prior,poisson_numbers,sample,Nsample)
     !extract poisson samples from a distribution with the constraint of the total number of objects 
     implicit none
-    real(sp)::sample(:),mu,norm,xmin_prior,xmax_prior
+    real(sp)::sample(:),mu,norm,xmin_prior,xmax_prior,x_m(1),x_w(1),halfmax(1),sg(1)
     real(dp)::px(:),x(:),dx,xmin,xmax
-    real(sp),allocatable::bigsample(:),sorting(:)
-    !real(sp)::xmax,xmin,mu,dx
     integer::i,N,j,iii,p(1),poisson_numbers(:),iseed,Nran
     integer*8::Nsample,Ngen,iostat
     logical::first=.true.
@@ -401,65 +399,46 @@ contains
     N=size(x)
 
     norm=real(Nsample)/sum(px)
-    norm=norm*2.  
-    !produce twice as many objects 
-    !select only Nsample from the draw
-249 continue
 
+    x_m=x(maxloc(px)) !; central mass of distribution
+    halfmax=maxval(px)/2.
+    x_w=x(minloc(abs(px-halfmax(1))))
+    sg=2.*abs(x_w-x_m)/2.35 !sigma_m
+
+ 
+!poisson sampling the original distribution. the number of obejcts could be larger or smaller than the number required
+    iii=1
     do i=1,N
        mu=real(Px(i)*norm)
        Nran=random_Poisson(mu, first)! integer from poisson distribution with mean mu
-       poisson_numbers(i)=Nran
-    enddo
 
-
-
-    Ngen=sum(poisson_numbers)
-    if (Ngen <= Nsample) goto 249
-
-
-
-    allocate(bigsample(Ngen),sorting(Ngen),stat=iostat)
-    if (iostat /=0) then
-       print*,'alloc error' 
-       stop
-    endif
-
-    iii=1
-    do i=1,N
-       Nran=poisson_numbers(i)
        xmax=x(i)+dx/2
        xmin=x(i)-dx/2
        if (xmin < xmin_prior) xmin=xmin_prior
        if (xmax > xmax_prior) xmax=xmax_prior
 
        do j=1,Nran
-          bigsample(iii)=ran_mwc(iseed)*(xmax-xmin)+xmin
-          sorting(iii)=ran_mwc(iseed)
+          sample(iii)=ran_mwc(iseed)*(xmax-xmin)+xmin
+          Ngen=iii
+          if (Ngen == Nsample) goto 249 
           iii=iii+1
        enddo
-
-   enddo
-
-
-    !fill sample with bigsample elements
-
-    do i=1,Nsample
-       p=minloc(sorting)
-       sample(i)=bigsample(P(1))
-       sorting(P(1))=10.
     enddo
 
+!filling the remaining elements (if any) with a Gaussian distr. derived from the initial distribution
 
-    deallocate(bigsample,sorting,stat=iostat)
-    if (iostat /=0) then
-       print*,'dealloc error' 
-       stop
-    endif
+    do iii=Ngen,Nsample
+       sample(iii)=randgauss_boxmuller(iseed)*sg(1)+x_m(1) 
+       if (sample(iii)>xmax_prior) sample(iii)=xmax_prior
+       if (sample(iii)<xmin_prior) sample(iii)=xmin_prior
+    enddo
 
+!print*,'done'
+249 continue 
 
 
   end subroutine poisson_constrained
+
 
   subroutine histogram(data,nbins,binsize,histo)
     implicit none

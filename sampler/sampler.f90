@@ -60,7 +60,7 @@ program sampler
   real(sp),allocatable::delta(:),work(:,:),diff(:)
   real(sp),allocatable::Radioflux(:,:),catout(:,:),samplex(:),lums(:),z_gals(:)
   real(sp),allocatable::Polaflux(:,:),inclinations(:),ellipticity1(:),ellipticity2(:),polafracs(:),lums_save(:,:)
-  real(sp),allocatable::Radioflux_copy(:,:),samplex_copy(:),sizes(:),radioflux_slice(:,:)
+  real(sp),allocatable::Radioflux_copy(:,:),samplex_copy(:),sizes(:),radioflux_slice(:,:),lums_slice(:)
   real(sp),allocatable::angles(:),sizes_3d(:),lums_copy(:),spot_dist(:)
 
   real(sp),allocatable::darkmass(:),darkmass_halo(:),latitudes(:),longitudes(:),cone(:,:),cone_old(:,:)
@@ -72,7 +72,7 @@ program sampler
   REAL(SP) ::deltatheta,deltaz,mu,flux14,dmtol,mgal,ncone_binned
   real(sp)::dm_model,dm_model2,dm_best,lat,lon,maxflux(1),redshift,minmass,minmass_cone,dim,lum_threshold,theta_high,theta_low,sin_i,logs,alpha_low
   real(sp)::alpha_high,minfreq,norm_f,dlogl,col,b,a,arg1,arg2,th,freq_norm
-  real(sp)::minm(Nmbins),maxm(Nmbins)
+  real(sp)::minm(Nmbins),maxm(Nmbins),mc(1),halfmax(1),mw(1),sg_m(1)
   real(sp),parameter::sigma_alpha=2.35660,mean_alpha=0.609847 
 
   !double precision variables
@@ -293,7 +293,7 @@ program sampler
      if (alphascaling_highf(i,1)/=data(i,1)) then
         print*,'Error: fluxes do not match!'
         stop
-     endif           
+     endif
      alphascaling_highf(i,4)=data(i,3)-data(i,4)!alpha+delta_alpha
   enddo
   deallocate(data)
@@ -496,7 +496,7 @@ program sampler
   ! this are the central redhifts at which the Bonato et al. 1.4 GHz luminosity functions are provided.  
   ! the lightcone for AGNs has been binned in the same way. 
   !each redshift slice is processed independently. execution can be parallelised in redhift bins
- 
+
   nreds=57 !SF gals until z=8 (where I have cone)
   nreds_out=nreds
 
@@ -512,7 +512,6 @@ program sampler
        ,'2.20','2.40','2.60','2.80','3.00','3.20','3.40','3.60','3.80','4.00','4.20','4.40','4.60','4.80','5.00'&
        ,'5.20','5.40','5.60','5.80','6.00','6.20','6.40','6.60','6.80','7.00','7.20','7.40','7.60','7.80','8.00',&
        '8.20','8.40','8.60','8.80','9.00','9.20','9.40','9.60','9.80','10.0'/)
-
 
   if (zmax < maxval(redshifts)) then
      nreds_out=0
@@ -692,8 +691,6 @@ program sampler
               theta_high=sin(5.*pi/180.)
               theta_low=sin(0.)
            end select
-
-
 
            !redshift bin is split into thin redshift slices
            do islice=1,nreds_lum-1
@@ -881,7 +878,7 @@ program sampler
            enddo
            deallocate(poisson_numbers,polafracs)
            !end polarization model
-           
+
            !allocate arrays to store the other results
            allocate(Darkmass(Nsample),latitudes(Nsample),longitudes(Nsample),&
                 &z_gals(Nsample),sizes_3d(Nsample),sizes(Nsample),angles(Nsample),spot_dist(Nsample))
@@ -917,7 +914,7 @@ program sampler
 
            ! Dark mass and clustering model
            print*,'dark mass starts'
- 
+
            ! generate masses from haloes for the distributions dervied for HERG/LERG
            select case(ii) !associate HERG/LERG to our 3 populations 
 
@@ -955,7 +952,7 @@ program sampler
 
            case (2)
 
-           !BLLAc ->   !LERG
+              !BLLAc ->   !LERG
               iii=1
               darkmass(:)=0.
               dx=masses_lerg(2)-masses_lerg(1)
@@ -964,14 +961,14 @@ program sampler
               do i=1,Nrows_lerg
                  mu=real(lerg_p(i)*norm)
                  Nran=random_Poisson(mu, first)
-                  xmax=masses_lerg(i)+dx/2
+                 xmax=masses_lerg(i)+dx/2
                  xmin=masses_lerg(i)-dx/2
 
                  do j=1,Nran
                     Darkmass(iii)=ran_mwc(iseed)*(xmax-xmin)+xmin
                     iii=iii+1
                     if (iii > Nsample ) then
-                        goto 220 
+                       goto 220 
                     endif
                  enddo
 
@@ -1005,7 +1002,7 @@ program sampler
               Nsample_herg=0
 
 
-!              print*,'Lum range',minval(samplex),maxval(samplex)
+              !              print*,'Lum range',minval(samplex),maxval(samplex)
 
               do i=1,Nsample
                  if (samplex(i) > lum_threshold) Nsample_herg=Nsample_herg+1
@@ -1029,7 +1026,7 @@ program sampler
                  do i=1,Nrows_herg
                     mu=real(herg_p(i)*norm)
                     Nran=random_Poisson(mu, first)! integer from poisson distribution with mean mu
-                     xmax=masses_herg(i)+dx/2
+                    xmax=masses_herg(i)+dx/2
                     xmin=masses_herg(i)-dx/2
 
                     do j=1,Nran
@@ -1062,7 +1059,7 @@ program sampler
                  do i=1,Nrows_lerg
                     mu=real(lerg_p(i)*norm)
                     Nran=random_Poisson(mu, first)! integer from poisson distribution with mean mu
-                     xmax=masses_lerg(i)+dx/2
+                    xmax=masses_lerg(i)+dx/2
                     xmin=masses_lerg(i)-dx/2
                     do j=1,Nran
                        ! jump to next element with flux under threshold
@@ -1201,7 +1198,7 @@ program sampler
               deallocate(lums_save)
 
            endif
-           
+
            !store the results in the catalogue
            catout(1,:)=samplex        !lum_1.4 GHz
            catout(2:nfreq_out+1,:)=radioflux(4:Nfreq,:)  ! total intensity
@@ -1252,14 +1249,14 @@ program sampler
   deallocate(alphascaling_highf_pola,alphascaling_lowf_pola)
   deallocate(redshifts,redshift_names)
   deallocate(tagnames)
- 
-  
+
+
 0101 continue
-  
+
   ! SFG model begins
   if (no_SFG /=0) goto 0202  ! skip SFG if needed
-!  nreds=67  !SF gals
-!  if (do_clustering==1)  
+  !  nreds=67  !SF gals
+  !  if (do_clustering==1)  
 
   nreds=57 !SF gals until z=8 (where I have cone)
   nreds_out=nreds
@@ -1365,7 +1362,7 @@ program sampler
   dustsed(:,3)=10.**dustsed(:,3)
   dustsed(:,4)=10.**dustsed(:,4)
 
-! main redshift loop
+  ! main redshift loop
   do zi=1,nreds_out-1
 
      z=redshifts(zi)
@@ -1491,7 +1488,7 @@ program sampler
            ncone_binned=real(Nhaloes)/real(Nmbins)
            nsample_binned=int(ncone_binned)+1
 
-!           print*,'rounding',ncone_binned,nsample_binned
+           !           print*,'rounding',ncone_binned,nsample_binned
 
            do i=1,Nmbins 
               istart=maxval((/(i-1)*nsample_binned,1/))
@@ -1533,13 +1530,18 @@ program sampler
 
 
         do ii=1,3 !loop on SFR populations  
+           ! information for limiting ram usage
+           ! processing long files in chuncks of lenght buffer_size
+           buffer_size=1000
+           buffer_free=buffer_size
+           jbuf=0 ! index to fill buffer 
 
-           print*,'beginning loop'
+           !print*,'beginning loop'
            px=(10.**data(:,ii+2)) !phi(logSFR)
 
 
-
-! quick calculation of max radioflux at the selection frequency to avoid generating galaxies which will be discarded
+           ! pezzo in test comincia qui
+           ! quick calculation of max radioflux at the selection frequency to avoid generating galaxies which will be discarded
            call Ldust(frequencies_rest,dustsed,dif,ii,Ld) 
            do iii=1,nrows
               sfr=10.**x(iii)
@@ -1547,26 +1549,20 @@ program sampler
               call Lsynch(frequencies_rest,sfr,Lsyn) !Lsyn is average value 
               call Lff(frequencies_rest,sfr,Lfree) 
               !syn+ff with a scatter (evolution relation by Magnelli et al. )
-              test=5. !max value for the gaussian random number, giving maximum possible flux for the source
-              
+              test=3.5 !max value for the gaussian random number, giving maximum possible flux for the source
+
               delta=10.0000**(log10(Lsyn+Lfree)+test*0.4000+2.3500*(1.0000 -(1.0000 +z)**(-0.1200))) 
               if (minval(delta)<0.) delta(:)=0. 
-          !    Lums(i)=dlog10(delta(i14)+Ld(i14)*sfr) 
               test=(delta(ilim)+Ld(ilim)*sfr)*conv_flux ! add dust SED
               if (test < fluxlim*1000.) px(iii)=0.
-
            enddo
 
            integ=trapint(x,px) ! integral with trapezium rule for the PDF, to give the number of galaxies 
-
-
 
            print*,'number of '//names(ii)//'galaxies for Mpc**3',integ
 
            norm=volume*integ/sum(px) ! normalisation for histogram 
            Ngen_db=volume*integ
-
-
            N=Nrows_lf 
 
            allocate(poisson_numbers(N),stat=iostat)
@@ -1583,14 +1579,13 @@ program sampler
            Nsample=sum(poisson_numbers) ! this is the number of galaxies to be generated
 
 
-!print*,poisson_numbers
-!stop
            if (Nsample==0) then
               deallocate(poisson_numbers)
               goto 500
            endif
+           if (Nsample < buffer_size) buffer_size=Nsample
 
-           allocate(samplex(Nsample))
+           allocate(samplex(buffer_size),radioflux(Nfreq,buffer_size),lums(buffer_size))
            if (iostat/=0) then
               print*,'sampler: allocation error'
               stop
@@ -1600,89 +1595,123 @@ program sampler
 
            dx=abs(x(2)-x(1))
 
-! generating SFR values for the galaxies from the PDF
-           iii=1
+           ! generating SFR values for the galaxies from the PDF
+
+           !           call Ldust(frequencies_rest,dustsed,dif,ii,Ld) 
+           ! this if the same for the same redshift slice. need to be multiplied by sfr 
+           Nsample_surv=0
+
+           !print*,poisson_numbers,sum(poisson_numbers)
+
            do i=1,N
               Nran=poisson_numbers(i)
-
               xmax=x(i)+dx/2
               xmin=x(i)-dx/2
 
+              allocate(radioflux_slice(Nfreq,Nran),samplex_slice(Nran),lums_slice(Nran))
+
               do j=1,Nran
-                 samplex(iii)=ran_mwc(iseed)*(xmax-xmin)+xmin
-                 iii=iii+1
+                 samplex_slice(j)=ran_mwc(iseed)*(xmax-xmin)+xmin
+
+                 sfr=10.**samplex_slice(j)
+                 !flux= synchrotron + free-free+dust
+                 call Lsynch(frequencies_rest,sfr,Lsyn) !Lsyn is average value 
+                 call Lff(frequencies_rest,sfr,Lfree) 
+                 !syn+ff with a scatter (evolution relation by Magnelli et al. )
+                 delta=10.0000**(log10(Lsyn+Lfree)+randgauss_boxmuller(iseed)*0.4000+2.3500*(1.0000 -(1.0000 +z)**(-0.1200))) 
+                 if (minval(delta)<0.) delta(:)=0. 
+                 Lums_slice(j)=dlog10(delta(i14)+Ld(i14)*sfr) 
+                 Radioflux_slice(:,j)=(delta+Ld*sfr)*conv_flux ! add dust SED
+                 if (Radioflux_slice(ilim,j)>= fluxlim*1000.) Nsample_surv= Nsample_surv+1  ! implement flux threshold
               enddo
 
-           enddo
-
-           deallocate(poisson_numbers)
-           print*,'SFRs generated'
-
-!print*,'allocating'
-           !vectors to store luminosities and total intensity flux
-           allocate(radioflux(Nfreq,Nsample),lums(Nsample),stat=iostat)
-           if (iostat /= 0) then
-              print*,'allocation error'
-              stop
-           endif
-
-!print*,'done'
-           Nsample_surv=0 ! initialise counter for number of object above flux threshold
-
-           !select the points in dustsed that correspond to the frequencies at the current redshift 
-           call Ldust(frequencies_rest,dustsed,dif,ii,Ld) 
-           ! this if the same for the same redshift slice. need to be multiplied by sfr 
-
-!print*,'ok',Nsample
-!stop
-           do i=1,Nsample
-
-              sfr=10.**samplex(i)
-              !flux= synchrotron + free-free+dust
-              call Lsynch(frequencies_rest,sfr,Lsyn) !Lsyn is average value 
-              call Lff(frequencies_rest,sfr,Lfree) 
-              !syn+ff with a scatter (evolution relation by Magnelli et al. )
-              delta=10.0000**(log10(Lsyn+Lfree)+randgauss_boxmuller(iseed)*0.4000+2.3500*(1.0000 -(1.0000 +z)**(-0.1200))) 
-              if (minval(delta)<0.) delta(:)=0. 
-              Lums(i)=dlog10(delta(i14)+Ld(i14)*sfr) 
-              Radioflux(:,i)=(delta+Ld*sfr)*conv_flux ! add dust SED
-              if (Radioflux(ilim,i)>= fluxlim*1000.) Nsample_surv= Nsample_surv+1  ! implement flux threshold
-           enddo
-
-           print*,'Number of galaxies above flux limit',Nsample_surv
+              !              print*,'Number of galaxies above flux limit',Nsample_surv
 
 
-           if (Nsample_surv == 0) then
-              deallocate(radioflux,samplex,lums)
-              goto 500
-           endif
+              if (buffer_free < Nsample_surv) then 
+                 ! expand buffer
+                 Print*,'resize buffer'
+                 buffer_size_old=buffer_size
+                 buffer_free_old=buffer_free
+                 buffer_size=buffer_size_old+(buffer_size_old+Nsample_surv)*10
+                 buffer_free=buffer_free+(buffer_size_old+Nsample_surv)*10
 
+                 allocate(Radioflux_copy(Nfreq,buffer_size_old),samplex_copy(buffer_size_old),lums_copy(buffer_size_old))
+                 radioflux_copy=radioflux
+                 samplex_copy=samplex
+                 lums_copy=lums 
+                 deallocate(radioflux,samplex,lums)
+                 allocate(Radioflux(Nfreq,buffer_size),samplex(buffer_size),lums(buffer_size))
+                 Radioflux(:,1:buffer_size_old)=Radioflux_copy(:,:)
+                 samplex(1:buffer_size_old)=samplex_copy(:)
+                 lums(1:buffer_size_old)=lums_copy(:)
+                 deallocate(lums_copy,radioflux_copy,samplex_copy)
+              endif
 
-           if (Nsample_surv < Nsample) then
-
-              Print*,'resize samples'
-              Nsample_old=Nsample
-              Nsample=Nsample_surv
-
-              allocate(samplex_copy(Nsample_old),Radioflux_copy(Nfreq,Nsample_old),lums_copy(Nsample_old))
-
-              samplex_copy=samplex
-              radioflux_copy=radioflux
-              lums_copy=lums
-              deallocate(samplex,radioflux,lums)
-              allocate(samplex(Nsample),Radioflux(Nfreq,Nsample),lums(Nsample))
-              j=0
-              do i=1,Nsample_old
-                 if (Radioflux_copy(ilim,i)>= fluxlim*1000.) then
-                    j=j+1
-                    samplex(j)=samplex_copy(i)
-                    Radioflux(:,j)=Radioflux_copy(:,i)
-                    lums(j)=lums_copy(i)
+              ! fill buffer
+              do j=1,Nran
+                 if (Radioflux_slice(ilim,j)>= fluxlim*1000.) then
+                    jbuf=jbuf+1
+                    Radioflux(:,jbuf)=Radioflux_slice(:,j)
+                    samplex(jbuf)=samplex_slice(j)
+                    lums(jbuf)=lums_slice(j)
                  endif
               enddo
-              deallocate(samplex_copy,Radioflux_copy,lums_copy)
+              buffer_free=buffer_size-jbuf
+
+              deallocate(samplex_slice,radioflux_slice,lums_slice)
+
+           enddo
+
+
+           deallocate(poisson_numbers)
+
+
+
+           Nsample=buffer_size-buffer_free
+           print*,'Number of galaxies above flux limit',Nsample
+           if (Nsample==0) then
+              !skip resize and output catalogue if no object is found
+              deallocate(radioflux,samplex,lums)
+              goto 500 
+           endif
+           ! resize Radioflux to the final sample size
+           if (buffer_free /=0) then
+              print*,'resize final flux ' 
+              allocate(radioflux_copy(Nfreq,buffer_size),samplex_copy(buffer_size),lums_copy(buffer_size),stat=iostat)
+              if (iostat /=0) then
+                 print*,'Allocation error'
+                 stop
+              endif
+              radioflux_copy=radioflux
+              samplex_copy=samplex
+              lums_copy=lums
+              deallocate(radioflux,samplex,lums,stat=iostat)
+              if (iostat /=0) then
+                 print*,'Deallocation error'
+                 stop
+              endif
+
+              Nsample=buffer_size-buffer_free
+              allocate(radioflux(Nfreq,Nsample),samplex(nsample),lums(nsample),stat=iostat)
+              if (iostat /=0) then
+                 print*,'Allocation error'
+                 stop
+              endif
+              radioflux(:,:)=radioflux_copy(:,1:Nsample)
+              samplex(:)=samplex_copy(1:Nsample)
+              lums(:)=lums_copy(1:Nsample)
+              deallocate(radioflux_copy,samplex_copy,lums_copy,stat=iostat)
+              if (iostat /=0) then
+                 print*,'Deallocation error'
+                 stop
+              endif
            endif
 
+           !           print*,radioflux(ilim,:)
+           !           stop
+           print*,'SFRs and flux generated'
+           !stop
            !vectors for polarization model
            allocate(Polaflux(Nfreq,Nsample),inclinations(Nsample)) !polarized flux and view angle 
 
@@ -1702,7 +1731,7 @@ program sampler
            if (iostat/=0) then
               print*,'sampler: allocation error'
               stop
-            endif
+           endif
 
            satellite_flag(:)=1 ! by default SFGs are as satellites
 
@@ -1723,10 +1752,12 @@ program sampler
            x2=data2(:,1)
            px2=data2(:,2)
 
+
            ! initialise mass for all galaxies as satellite galaxies
            call poisson_constrained(iseed,x2,Px2,5.,15.,poisson_numbers,Darkmass_halo,Nsample)
            !mass is that of the halo hosting a satellite
            deallocate(x2,px2,poisson_numbers,data2)
+
 
 
            do i=1,Nsample
@@ -1735,18 +1766,15 @@ program sampler
               Darkmass(i)=dm_model ! halo mass to associate with BGC instead of satellite         
               satellite_flag(i)=dm_model/darkmass_halo(i) ! galaxy/halo mass ratio  
               if (dm_model >=minmass_cone) satellite_flag(i)=0 ! only galaxies with mass smaller that minimum halo mass in the lightcone are kept as satellites
-           enddo
-
-           Nsample_mass=sum(satellite_flag)
-           print*,'number of satellite galaxies',Nsample_mass
-
-           !initialize coordinate and redshifts 
-           do i=1,Nsample
+              
               latitudes(i)=(ran_mwc(iseed)-0.5)*sim_side
               longitudes(i)=(ran_mwc(iseed)-0.5)*sim_side
               z_gals(i)=ran_mwc(iseed)*(zhigh-zlow)+zlow
            enddo
 
+
+           Nsample_mass=sum(satellite_flag)
+           print*,'number of satellite galaxies',Nsample_mass
 
            if (do_clustering==1) then ! clustering model
               print*,'clustering starts'
@@ -1759,114 +1787,114 @@ program sampler
 
               do i=1,Nsample
                  mgal=darkmass(i)
-                 
+
                  ! mass matching if the galaxy's mass is in the range of masses of the lighcone
                  ! galaxies outside this range have been assigned random positions already
                  ! galaxies that are successfully matched to a halo will be associated the same position of the halo
                  if ((mgal >=minm(1)) .and. (mgal<=maxm(Nmbins))) then 
 
-! two possible implementations of the association of dark haloes to SFGs
-! case(0): galaxy always associated to the closest halo mass, first come first served
-! this means some galaxies end up being associated with halo masses quite different
-! case(1): galaxy associated to halo mass no more distant than dmtol
-! this is more consistent for all galaxies, but typically gets galaxies associated with smaller halo masses, due to the shape of the mass function
-! mass_scatter parameter controlling this is defined in valiable declaration and set to 1. 
-! change it to 0 to use the alternative implementation
+                    ! two possible implementations of the association of dark haloes to SFGs
+                    ! case(0): galaxy always associated to the closest halo mass, first come first served
+                    ! this means some galaxies end up being associated with halo masses quite different
+                    ! case(1): galaxy associated to halo mass no more distant than dmtol
+                    ! this is more consistent for all galaxies, but typically gets galaxies associated with smaller halo masses, due to the shape of the mass function
+                    ! mass_scatter parameter controlling this is defined in valiable declaration and set to 1. 
+                    ! change it to 0 to use the alternative implementation
 
                     dmtol=2.
 
                     select case(mass_scatter) 
                     case(0)
-                    !first mass association implementation
-                    ! if the redshift slice contains a few haloes, no binning in mass is necessary
-                    if (Nhaloes < 1000) then 
-                       ! no mass binning for a few haloes
-                       istart_i=0
-                       iend_i=Nhaloes
+                       !first mass association implementation
+                       ! if the redshift slice contains a few haloes, no binning in mass is necessary
+                       if (Nhaloes < 1000) then 
+                          ! no mass binning for a few haloes
+                          istart_i=0
+                          iend_i=Nhaloes
 
-                    else
-                       ! for big redshift slices, use mass bins to speed-up associating the galaxy to a halo of similar mass
-                      
-                       do iii=1,Nmbins   ! determine in which bin mass the galaxy falls
-                          if ((mgal >=minm(iii)) .and. (mgal <maxm(iii))) then
-                             istart=maxval((/(iii-1)*nsample_binned,1/))
-                             iend=minval((/iii*nsample_binned,Nhaloes/))
-                             istart_i=istart(1)
-                             iend_i=iend(1)
+                       else
+                          ! for big redshift slices, use mass bins to speed-up associating the galaxy to a halo of similar mass
 
-                          endif
-                       enddo
-                    endif
+                          do iii=1,Nmbins   ! determine in which bin mass the galaxy falls
+                             if ((mgal >=minm(iii)) .and. (mgal <maxm(iii))) then
+                                istart=maxval((/(iii-1)*nsample_binned,1/))
+                                iend=minval((/iii*nsample_binned,Nhaloes/))
+                                istart_i=istart(1)
+                                iend_i=iend(1)
+
+                             endif
+                          enddo
+                       endif
 
 
 !!$                    ! assign the galaxy to the closest halo mass in the mass bin
-                    fom_old=abs(mgal-cone(istart_i,1)) !initialise distance betweem model mass and halo mass
-                    ! associate galaxy to the closest available mass
-                    p_i=istart_i 
-                    do iii=istart_i+1,iend_i
-                       fom=abs(mgal-cone(iii,1))
-                       if (fom<fom_old) then
-                          fom_old=fom
-                          p_i=iii
-                       endif
-                    enddo
-
-                   dm_best=cone(p_i,1)
-                    if (dm_best /=flagvalue) then 
-                       latitudes(i)=cone(p_i,3)
-                       longitudes(i)=cone(p_i,4)
-                       z_gals(i)=cone(p_i,2)
-                       cone(p_i,:)=flagvalue
-                   endif
-
-
-                case(1)
-                   ! second mass association implementation
-
-                    ! allow some scatter between halo mass and galaxy mass
-                   
-                   istart_i=0   ! no mass binning, considering the whole cone
-                   iend_i=Nhaloes
-                   fom=1.e20    ! variable initialization
-                   count=0.
-                    if (maxval(cone(:,1)) > flagvalue) then  ! this means not all haloes are used 
-
-                       do while (fom > dmtol)
-                          try=int(ran_mwc(iseed)*(iend_i-istart_i-1)+istart_i+1)
-                          
-                          if ((try >= istart_i+1) .and. (try <=iend_i )) then
-                             fom=abs(mgal-cone(try,1))
-                             count=count+1 
+                       fom_old=abs(mgal-cone(istart_i,1)) !initialise distance betweem model mass and halo mass
+                       ! associate galaxy to the closest available mass
+                       p_i=istart_i 
+                       do iii=istart_i+1,iend_i
+                          fom=abs(mgal-cone(iii,1))
+                          if (fom<fom_old) then
+                             fom_old=fom
+                             p_i=iii
                           endif
-                          
-                          if (count > Nhaloes) goto 888 
-                          ! abort mass association if a suitable halo is not found
-                          ! in this case random coordinates have been already assigned
-                      enddo
-                    endif
+                       enddo
 
-                    p_i=try
-                    dm_best=cone(p_i,1)
-
-                    if ((fom<=dmtol) .and. (dm_best /=flagvalue)) then 
-                       
-                       latitudes(i)=cone(p_i,3)
-                       longitudes(i)=cone(p_i,4)
-                       z_gals(i)=cone(p_i,2)
-                       cone(p_i,:)=flagvalue
-                       
-                    endif
-888                 continue
+                       dm_best=cone(p_i,1)
+                       if (dm_best /=flagvalue) then 
+                          latitudes(i)=cone(p_i,3)
+                          longitudes(i)=cone(p_i,4)
+                          z_gals(i)=cone(p_i,2)
+                          cone(p_i,:)=flagvalue
+                       endif
 
 
+                    case(1)
+                       ! second mass association implementation
 
-                 end select
+                       ! allow some scatter between halo mass and galaxy mass
+
+                       istart_i=0   ! no mass binning, considering the whole cone
+                       iend_i=Nhaloes
+                       fom=1.e20    ! variable initialization
+                       count=0.
+                       if (maxval(cone(:,1)) > flagvalue) then  ! this means not all haloes are used 
+
+                          do while (fom > dmtol)
+                             try=int(ran_mwc(iseed)*(iend_i-istart_i-1)+istart_i+1)
+
+                             if ((try >= istart_i+1) .and. (try <=iend_i )) then
+                                fom=abs(mgal-cone(try,1))
+                                count=count+1 
+                             endif
+
+                             if (count > Nhaloes) goto 888 
+                             ! abort mass association if a suitable halo is not found
+                             ! in this case random coordinates have been already assigned
+                          enddo
+                       endif
+
+                       p_i=try
+                       dm_best=cone(p_i,1)
+
+                       if ((fom<=dmtol) .and. (dm_best /=flagvalue)) then 
+
+                          latitudes(i)=cone(p_i,3)
+                          longitudes(i)=cone(p_i,4)
+                          z_gals(i)=cone(p_i,2)
+                          cone(p_i,:)=flagvalue
+
+                       endif
+888                    continue
+
+
+
+                    end select
                  endif
               enddo
 
-             print*,'clustering ends'
+              print*,'clustering ends'
 
-             
+
            endif ! end clustering 
 
 
@@ -1893,8 +1921,11 @@ program sampler
               arg2=(2.*x2(i)/b)**a
               px2(i)=x2(i)*((cos(arg1))**2 *exp(-1.*arg2))
            enddo
+
            call poisson_constrained(iseed,x2,Px2,0.,1.,poisson_numbers,ellipticity1,Nsample)
            deallocate(poisson_numbers,x2,px2)
+
+
            do i=1,Nsample
               th=ran_mwc(iseed)*2.*pi*2. !2theta
               ellipticity2(i)=ellipticity1(i)*sin(th)
@@ -1905,7 +1936,7 @@ program sampler
            !writing the catalogue
            allocate(catout(Ncat_sfr,Nsample))
 
- 
+
            !saving the fields to catalogue columns
            catout(1,:)=samplex(1:Nsample)
            catout(2:nfreq_out+1,:)=radioflux(4:Nfreq,:)
@@ -1920,7 +1951,7 @@ program sampler
            catout(2*nfreq_out+9,:)=ellipticity1  
            catout(2*nfreq_out+10,:)=ellipticity2  
            catout(2*nfreq_out+11,:)=ii !SGSs
-          if (save_lums ==1) then
+           if (save_lums ==1) then
               allocate(lums_save(Nfreq,Nsample))
 
               do i=1,Nsample
@@ -1956,25 +1987,25 @@ program sampler
 
      endif
 
-     enddo !loop on redshifts
+  enddo !loop on redshifts
 
-     !free all memory
-     deallocate(redshifts,redshift_names)
-     deallocate(dustsed,dif)
-     deallocate(Lsyn,Lfree,Ld)
-     deallocate(frequencies,frequencies_rest,tagnames)
+  !free all memory
+  deallocate(redshifts,redshift_names)
+  deallocate(dustsed,dif)
+  deallocate(Lsyn,Lfree,Ld)
+  deallocate(frequencies,frequencies_rest,tagnames)
 
 0202 continue
 
-     ! compute time for the run
-     call date_and_time(values = values_time(:,2))
+  ! compute time for the run
+  call date_and_time(values = values_time(:,2))
 
-     values_time(:,1) = values_time(:,2) - values_time(:,1)
-     clock_time =  (  (values_time(3,1)*24 &
-          &           + values_time(5,1))*60. &
-          &           + values_time(6,1))*60. &
-          &           + values_time(7,1) &
-          &           + values_time(8,1)/1000.
-     PRINT*,"Total clock time [m]:",clock_time/60.
-     PRINT*,"               "//code//" > Normal completion"
-   end program sampler
+  values_time(:,1) = values_time(:,2) - values_time(:,1)
+  clock_time =  (  (values_time(3,1)*24 &
+       &           + values_time(5,1))*60. &
+       &           + values_time(6,1))*60. &
+       &           + values_time(7,1) &
+       &           + values_time(8,1)/1000.
+  PRINT*,"Total clock time [m]:",clock_time/60.
+  PRINT*,"               "//code//" > Normal completion"
+end program sampler

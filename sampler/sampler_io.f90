@@ -11,7 +11,7 @@ module sampler_io
 contains
 
 
- subroutine rows_catalogue(filename,Ncol,irow,tags)
+ subroutine rows_catalogue(filename,Ncol,irow,tags,units)
     !enquire length of catalogue file 
     !C     read and print data values from an ASCII or binary table
 
@@ -19,7 +19,7 @@ contains
     integer felem,nelems,nullj,diameter,nfound,irow,colnum
     real nulle,density
     character filename*200,nullstr*1,name*8
-    character*16 ttype(Ncol),tform(Ncol),tunit(Ncol),tags(:)!,units(:)
+    character*16 ttype(Ncol),tform(Ncol),tunit(Ncol),tags(:),units(:)
     logical anynull
 
 
@@ -36,10 +36,12 @@ contains
 
     !C         read the TTYPEn keywords, which give the names of the columns
 6   call ftgkns(unit,'TTYPE',1,Ncol,ttype,nfound,status)
+    call ftgkns(unit,'TUNIT',1,Ncol,tunit,nfound,status)
 
     if (nfound==0) then 
        call ftmrhd(unit,1,hdutype,status) ! go to the next extension
        call ftgkns(unit,'TTYPE',1,Ncol,ttype,nfound,status)
+       call ftgkns(unit,'TUNIT',1,Ncol,tunit,nfound,status)
     endif
     
 
@@ -69,6 +71,7 @@ contains
     !C     check for any error, and if so print out error messages
 11  if (status .gt. 0)call printerror(status)
     tags=ttype
+    units=tunit
 !stop
   end subroutine rows_catalogue
 
@@ -169,8 +172,35 @@ contains
     varidat=0
 
     tform(:)='1E'
-    tunit(1:ncol)=(/ ''/)
+ !   tunit(1:ncol)=(/ '     mJy     '/)
     ttype=tagnames
+
+    ! set TUNIT depending on the quantity
+    do j=1,Ncol
+       !if (tagnames(i) == ) tunit(i)=
+       tunit(j)='mJy'
+       if (tagnames(j)=='Lum1400') tunit(j)='log(erg/s/Hz)'
+       if ( tagnames(j)=='Mh') tunit(j)='log(Msun)'
+       if ( tagnames(j)=='x_coord') tunit(j)='degs'
+       if  (tagnames(j)=='y_coord') tunit(j)='degs'
+       if  (tagnames(j)=='latitude') tunit(j)='degs'
+       if  (tagnames(j)=='longitude') tunit(j)='degs'
+       if  (tagnames(j)=='redshift') tunit(j)='none'
+       if  (tagnames(j)=='phys size') tunit(j)='Kpc'
+       if  (tagnames(j)=='angle') tunit(j)='degs'
+       if  (tagnames(j)=='size') tunit(j)='arcsec'
+       if  (tagnames(j)=='Rs') tunit(j)='none'
+       if  (tagnames(j)=='PopFlag') tunit(j)='none'
+       if  (tagnames(j)=='PopFlag') i=j ! identify the last column if luminosities are not saved
+!print*,tagnames(j),tunit(j)
+!stop 
+   enddo
+!    stop
+    if (Ncol /= i) then ! case where luminosities are also saved
+       tunit(i+1:Ncol)='log(erg/s/Hz)'
+    endif
+!print*,tunit
+!stop
 
     !C     write the required header parameters for the binary table
     call ftphbn(unit,nrows,tfields,ttype,tform,tunit,extname,varidat,status)

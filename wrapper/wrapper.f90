@@ -111,7 +111,7 @@ program wrapper
      print*,'Error allocating filenames'
      stop
   endif
-  tunit(:)=(/ ''/)
+  tunit(:)=''
   tform(:)='1E'
 
   do i=1,NFiles
@@ -152,12 +152,14 @@ program wrapper
   Nrows=0
 
   do i=1,Nfiles
-     call rows_catalogue(catfiles(i),Ncols,nrows_i,tagnames)
+     call rows_catalogue(catfiles(i),Ncols,nrows_i,tagnames,tunit)
      nrows=nrows+nrows_i
   enddo
   print*, 'total number of rows',Nrows
 
 
+!print*,tunit
+!stop
   if (do_clustering==0) then
      !initialization necessary for generating random coordinates
      !getting the list of healpix pixels in the area
@@ -256,13 +258,13 @@ program wrapper
         felem=1
         do ii=1,nfiles
            print*,'copying catalogue',catfiles(ii)
-           call rows_catalogue(catfiles(ii),Ncols,nrows_i,tagnames)
+           call rows_catalogue(catfiles(ii),Ncols,nrows_i,tagnames,tunit)
            allocate(data(nrows_i,Ncols),column(nrows_i))
            call read_catalogue(catfiles(ii),Ncols,Nrows_i,data)
-
+           print*,'number of rows',nrows_i
            ! select a random pixel of the list
            do jj=1,nrows_i
-
+!print*,jj,nrows_i
               ipix=int(ran_mwc(iseed)*(nlist-1))+1  !extraction of one random pixel position
               call pix2ang_ring(nside,listpix(ipix),lat_astro,lon_astro)
 111           continue
@@ -293,7 +295,8 @@ program wrapper
               data(jj,i_lon)=real(lon_astro)
 
            enddo
-
+           print*,'writing'
+           print*,'file ',ii,' of',nfiles
            ! write the content on the new file
            felem=1
            i=1
@@ -318,7 +321,7 @@ program wrapper
         felem=1
         do ii=1,nfiles
            print*,'copying catalogue',catfiles(ii)
-           call rows_catalogue(catfiles(ii),Ncols,nrows_i,tagnames)
+           call rows_catalogue(catfiles(ii),Ncols,nrows_i,tagnames,tunit)
            allocate(data(nrows_i,Ncols),column(nrows_i))
            call read_catalogue(catfiles(ii),Ncols,Nrows_i,data)
 
