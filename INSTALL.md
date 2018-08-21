@@ -6,7 +6,9 @@ To build the package for the first time:
 
 1) download the archive 
 
+https://www.dropbox.com/s/crkzwho0hqc565g/TRECS_Inputs.tgz?dl=0
 
+(size 33 Gb)
 which contains input files with all the models used by the sampler code. Once extracted, 
 
 tar -xvf TRECS_Inputs.tgz
