@@ -32,12 +32,12 @@ def collate_sfgs(folder1,folder2,lat_target,lon_target,sim_side,do_clustering,ta
     print('Ncols',Ncols)
     print('Nfiles',nfiles)
 
-    input_file = open('infile_wrapper_SFGs.ini','w')
+    input_file = open('infile_wrapper_SFGs_'+tag+'.ini','w')
     input_file.write('Nfiles=%i\n'%(nfiles))
     input_file.write('Ncols=%i\n'%(Ncols))
-    input_file.write('lat_target=%i\n'%(lat_target))
-    input_file.write('lon_target=%i\n'%(lon_target))
-    input_file.write('sim_side=%i\n'%(sim_side))
+    input_file.write('lat_target=%f\n'%(lat_target))
+    input_file.write('lon_target=%f\n'%(lon_target))
+    input_file.write('sim_side=%f\n'%(sim_side))
     input_file.write('do_clustering=%i\n'%(do_clustering))
 
     for i in range(nfiles):
@@ -73,12 +73,12 @@ def collate_agns(folder1,folder2,lat_target,lon_target,sim_side,do_clustering,ta
     
     nfiles=len(results)
 
-    input_file = open('infile_wrapper_AGNs.ini','w')
+    input_file = open('infile_wrapper_AGNs_'+tag+'.ini','w')
     input_file.write('Nfiles=%i\n'%(nfiles))
     input_file.write('Ncols=%i\n'%(Ncols))
-    input_file.write('lat_target=%i\n'%(lat_target))
-    input_file.write('lon_target=%i\n'%(lon_target))
-    input_file.write('sim_side=%i\n'%(sim_side))
+    input_file.write('lat_target=%f\n'%(lat_target))
+    input_file.write('lon_target=%f\n'%(lon_target))
+    input_file.write('sim_side=%f\n'%(sim_side))
     input_file.write('do_clustering=%i\n'%(do_clustering))
 
     for i in range(nfiles):
@@ -89,20 +89,25 @@ def collate_agns(folder1,folder2,lat_target,lon_target,sim_side,do_clustering,ta
 
     return
 
-folder2='/home/a.bonaldi/local2/scratch/Bonaldi/Radio_srccnt/runs_delivery/Jul2018/'
-folder1='/home/a.bonaldi/local2/scratch/Bonaldi/Radio_srccnt/runs_delivery/Jul2018/deep/'
-tag='deep'
+folder2='/home/a.bonaldi/data_challenges/inputs/T-RECS_cats/'
+folder1='/home/a.bonaldi/data_challenges/inputs/T-RECS_cats/run1/'
+tag='chall_1'
 
-
-
-# folder1='/home/a.bonaldi/local2/scratch/Bonaldi/Radio_srccnt/runs_delivery/Jul2018/deep/'
-# tag='deep'
-
-lat_target=0.
+lat_target=-30.
 lon_target=0.
 
 do_clustering=1
-sim_side=1
+sim_side=3.
+
+#folder2='../'
+#folder1='../tests/'
+#tag='test'
+
+#lat_target=0.
+#lon_target=0.
+
+#do_clustering=1
+#sim_side=5.
 
 
 try:

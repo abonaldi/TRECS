@@ -402,6 +402,7 @@ program sampler
   !lum,mass,x,y,lat,lon,redshift,size,angle,proj_size,rs,popflag
   if (save_lums ==1) Ncat_agn=3*Nfreq_out+12 !optionally saving intrinsic luminosities
 
+
   !creating tag names for the catalogue
   allocate(tagnames(Ncat_agn))
   j=1
@@ -415,6 +416,7 @@ program sampler
      tagnames(j)=dummy
      j=j+1
   enddo
+
   !polarised intensity
   do i=1,Nfreq_out
      write(output,"(i5)")int(frequencies(i+3))
@@ -522,6 +524,8 @@ program sampler
      enddo
      nreds_out=nreds_out+1
   endif
+
+
 
 
   ! names of AGN populations
@@ -733,6 +737,8 @@ program sampler
 
                  Nsample=sum(poisson_numbers)  ! this is the number of galaxies to generate
 
+                 if (Nsample==0) goto 100
+
                  allocate(samplex_slice(Nsample),radioflux_slice(Nfreq,Nsample))! arrays where to store objects
 
 
@@ -799,7 +805,9 @@ program sampler
 
                  deallocate(samplex_slice,radioflux_slice)
 
+100           continue
               endif  ! small slice in big slice
+
            enddo ! loop on small slices
 
            deallocate(data,x,px,poisson_numbers) 
@@ -810,9 +818,9 @@ program sampler
            if (Nsample==0) then
               !skip resize and output catalogue if no object is found
               deallocate(radioflux,samplex)
+              print*,'ZEROZERO'
               goto 400 
-           endif
-
+           endif 
            ! resize Radioflux to the final sample size
            if (buffer_free /=0) then
               print*,'resize final flux ' 
@@ -855,14 +863,14 @@ program sampler
            px3=px3/sum(px3)*Nsample  !normalization of pdf
 
            ! allocate work arrays and array to store the results
-           allocate(polaflux(Nfreq,Nsample),poisson_numbers(N3),polafracs(Nsample),stat=iostat) 
+           allocate(polaflux(Nfreq,Nsample),polafracs(Nsample),stat=iostat) 
            if (iostat /=0) then
               print*,'Allocation error'
               stop
            endif
 
            !poisson-sample from the polarization PDF but on the same Nsample objects already extracted
-           call poisson_constrained(iseed,x3,Px3,0.,100.,poisson_numbers,polafracs,Nsample)
+           call poisson_constrained(iseed,x3,Px3,0.,100.,polafracs,Nsample)
 
            do i=1,Nfreq
               polaflux(i,:)=polafracs/100.*radioflux(i,:)
@@ -876,7 +884,7 @@ program sampler
                    &,alphascaling_highf_pola,spec,frequencies)
               polaflux(:,i)=spec
            enddo
-           deallocate(poisson_numbers,polafracs)
+           deallocate(polafracs)
            !end polarization model
 
            !allocate arrays to store the other results
@@ -895,7 +903,11 @@ program sampler
            nrows=rows_number(filename9,1,nskip)
 
 
-           allocate(data2(nrows,ncolumns),x2(nrows),px2(nrows))
+           allocate(data2(nrows,ncolumns),x2(nrows),px2(nrows),stat=iostat)
+           if (iostat /=0) then
+              print*,'sizes allocation failed'
+              stop
+           endif
            call read_columns(filename9,2,nrows,Ncolumns,nskip,data2)
 
            x2=data2(:,1) !size Kpc
@@ -903,11 +915,22 @@ program sampler
            dx2=abs(x2(2)-x2(1))
            N=Nrows
 
-           allocate(poisson_numbers(N))
+!!$           allocate(poisson_numbers(N),stat=iostat)
+!!$if (iostat /= 0) then
+!!$              print*,'sizes allocation failed 2'
+!!$              stop
+!!$           endif
+
+
            ! sample from size distribution
-           call poisson_constrained(iseed,x2,Px2,0.,2010.,poisson_numbers,sizes_3d,Nsample)
+           call poisson_constrained(iseed,x2,Px2,0.,2010.,sizes_3d,Nsample)
            print*,'sizes minmax',minval(sizes_3d),maxval(sizes_3d)
-           deallocate(data2,x2,px2,poisson_numbers)
+!stop
+           deallocate(data2,x2,px2,stat=iostat)
+           if (iostat /= 0) then
+              print*,'size dealloc failed'
+              stop
+           endif
 
            print*,'sizes ends'
            ! end AGN size model
@@ -1186,6 +1209,10 @@ program sampler
 
 
            ! compute intrinsic luminosities and store them in the catalogue if requested
+
+           !print*,tagnames(2*nfreq_out+13:3*nfreq_out+12)
+
+
            if (save_lums ==1) then
               allocate(lums_save(Nfreq,Nsample))
 
@@ -1194,7 +1221,8 @@ program sampler
                  conv_flux=1./(4.*pi*(lumr(zlum)*Mpc)**2)*1.e26*(1+zlum) !L [erg/s/Hz] ->S [mJy] 
                  lums_save(:,i)=log10(radioflux(:,i)/conv_flux)
               enddo
-              catout(2*nfreq_out+11:3*nfreq_out+10,:)=lums_save(4:Nfreq,:)
+
+              catout(2*nfreq_out+13:3*nfreq_out+12,:)=lums_save(4:Nfreq,:)
               deallocate(lums_save)
 
            endif
@@ -1214,6 +1242,9 @@ program sampler
            catout(2*nfreq_out+10,:)=sizes       ! projected angular size
            catout(2*nfreq_out+11,:)=spot_dist   ! distance between bright spots (Rs)
            catout(2*nfreq_out+12,:)=ii+3        ! flag to identify population
+
+!quiqui
+
 
            write(output,"(i5)")t
            output=ADJUSTL(output)
@@ -1240,6 +1271,7 @@ program sampler
         deallocate(masses_lerg,masses_herg,lerg_p,herg_p)
         if (do_clustering==1) deallocate(cone)
      endif
+
   enddo
 
   ! end of AGN modelling
@@ -1581,6 +1613,7 @@ program sampler
 
            if (Nsample==0) then
               deallocate(poisson_numbers)
+              print*,'ZEROZERO'
               goto 500
            endif
            if (Nsample < buffer_size) buffer_size=Nsample
@@ -1746,7 +1779,7 @@ program sampler
            Ncolumns=2
            nrows=rows_number(filename,1,nskip)
 
-           allocate(data2(nrows,ncolumns),x2(nrows),px2(nrows),poisson_numbers(nrows)) 
+           allocate(data2(nrows,ncolumns),x2(nrows),px2(nrows)) 
 
            call read_columns(filename,2,nrows,Ncolumns,nskip,data2)
            x2=data2(:,1)
@@ -1754,9 +1787,9 @@ program sampler
 
 
            ! initialise mass for all galaxies as satellite galaxies
-           call poisson_constrained(iseed,x2,Px2,5.,15.,poisson_numbers,Darkmass_halo,Nsample)
+           call poisson_constrained(iseed,x2,Px2,5.,15.,Darkmass_halo,Nsample)
            !mass is that of the halo hosting a satellite
-           deallocate(x2,px2,poisson_numbers,data2)
+           deallocate(x2,px2,data2)
 
 
 
@@ -1911,7 +1944,7 @@ program sampler
 
            ! ellipticities (Tunbridge et al. 2016)
            N=100
-           allocate(poisson_numbers(N),x2(N),px2(N)) ! distribution for |e|
+           allocate(x2(N),px2(N)) ! distribution for |e|
 
            do i=1,N
               x2(i)=i*1./real(N)  !|e| ranging 0 to 1 sampled by N points
@@ -1922,8 +1955,8 @@ program sampler
               px2(i)=x2(i)*((cos(arg1))**2 *exp(-1.*arg2))
            enddo
 
-           call poisson_constrained(iseed,x2,Px2,0.,1.,poisson_numbers,ellipticity1,Nsample)
-           deallocate(poisson_numbers,x2,px2)
+           call poisson_constrained(iseed,x2,Px2,0.,1.,ellipticity1,Nsample)
+           deallocate(x2,px2)
 
 
            do i=1,Nsample
@@ -1959,7 +1992,7 @@ program sampler
                  conv_flux=1./(4.*pi*(lumr(zlum)*Mpc)**2)*1.e26*(1+zlum) !L [erg/s/Hz] ->S [mJy] 
                  lums_save(:,i)=log10(radioflux(:,i)/conv_flux)
               enddo
-              catout(2*nfreq_out+10:3*nfreq_out+9,:)=lums_save(4:Nfreq,:)
+              catout(2*nfreq_out+12:3*nfreq_out+11,:)=lums_save(4:Nfreq,:)
               deallocate(lums_save)
 
            endif

@@ -382,30 +382,39 @@ contains
   end function ran_mwc
 
 
-  subroutine poisson_constrained(iseed,x,Px,xmin_prior,xmax_prior,poisson_numbers,sample,Nsample)
+  subroutine poisson_constrained(iseed,x,Px,xmin_prior,xmax_prior,sample,Nsample)
     !extract poisson samples from a distribution with the constraint of the total number of objects 
     implicit none
-    real(sp)::sample(:),mu,norm,xmin_prior,xmax_prior,x_m(1),x_w(1),halfmax(1),sg(1)
+    real(sp)::sample(:),mu,norm,xmin_prior,xmax_prior,sg
+!    real(sp)::x_m(1),x_w1(1),x_w2(1),halfmax(1),sg1(1),sg2(1)
     real(dp)::px(:),x(:),dx,xmin,xmax
-    integer::i,N,j,iii,p(1),poisson_numbers(:),iseed,Nran
-    integer*8::Nsample,Ngen,iostat
+    integer::i,N,j,iii,p(1),iseed,Nran,test
+    integer*8::Nsample,Ngen,iostat,p_m(1)
     logical::first=.true.
 
 
 
-    poisson_numbers(:)=0.
     
     dx=abs(x(2)-x(1))
+    sg=dx/3. ! scatter for the additional samples
     N=size(x)
 
     norm=real(Nsample)/sum(px)
+!    p_m=maxloc(px)
+!    x_m=x(p_m(1)) !; central mass of distribution
+!    halfmax=maxval(px)/2.
+!    x_w1=x(minloc(abs(px(1:p_m(1))-halfmax(1))))
+!    x_w2=x(minloc(abs(px(p_m(1):N)-halfmax(1))))
 
-    x_m=x(maxloc(px)) !; central mass of distribution
-    halfmax=maxval(px)/2.
-    x_w=x(minloc(abs(px-halfmax(1))))
-    sg=2.*abs(x_w-x_m)/2.35 !sigma_m
 
- 
+
+!    sg1=2.*abs(x_w1-x_m)/2.35 !sigma_m left side
+!    sg2=2.*abs(x_w2-x_m)/2.35 !sigma_m right side
+
+!print*,sg1,sg2
+
+
+
 !poisson sampling the original distribution. the number of obejcts could be larger or smaller than the number required
     iii=1
     do i=1,N
@@ -425,17 +434,18 @@ contains
        enddo
     enddo
 
-!filling the remaining elements (if any) with a Gaussian distr. derived from the initial distribution
-
+!print*,'filling ',Nsample-Ngen
+    !filling the remaining with replicas of the sample plus small scatter
     do iii=Ngen,Nsample
-       sample(iii)=randgauss_boxmuller(iseed)*sg(1)+x_m(1) 
-       if (sample(iii)>xmax_prior) sample(iii)=xmax_prior
-       if (sample(iii)<xmin_prior) sample(iii)=xmin_prior
+       test=nint(ran_mwc(iseed)*(ngen-1)+1)
+       sample(iii)=sample(test)+randgauss_boxmuller(iseed)*sg
+       if (sample(iii) < xmin_prior) sample(iii)=xmin_prior
+       if (sample(iii) > xmax_prior) sample(iii)=xmax_prior
     enddo
 
-!print*,'done'
-249 continue 
 
+
+249 continue 
 
   end subroutine poisson_constrained
 
