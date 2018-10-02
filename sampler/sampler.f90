@@ -818,7 +818,6 @@ program sampler
            if (Nsample==0) then
               !skip resize and output catalogue if no object is found
               deallocate(radioflux,samplex)
-              print*,'ZEROZERO'
               goto 400 
            endif 
            ! resize Radioflux to the final sample size
@@ -1613,7 +1612,6 @@ program sampler
 
            if (Nsample==0) then
               deallocate(poisson_numbers)
-              print*,'ZEROZERO'
               goto 500
            endif
            if (Nsample < buffer_size) buffer_size=Nsample

@@ -400,22 +400,8 @@ contains
     N=size(x)
 
     norm=real(Nsample)/sum(px)
-!    p_m=maxloc(px)
-!    x_m=x(p_m(1)) !; central mass of distribution
-!    halfmax=maxval(px)/2.
-!    x_w1=x(minloc(abs(px(1:p_m(1))-halfmax(1))))
-!    x_w2=x(minloc(abs(px(p_m(1):N)-halfmax(1))))
 
-
-
-!    sg1=2.*abs(x_w1-x_m)/2.35 !sigma_m left side
-!    sg2=2.*abs(x_w2-x_m)/2.35 !sigma_m right side
-
-!print*,sg1,sg2
-
-
-
-!poisson sampling the original distribution. the number of obejcts could be larger or smaller than the number required
+!poisson sampling the original distribution. the number of objects could be larger or smaller than the number required
     iii=1
     do i=1,N
        mu=real(Px(i)*norm)
@@ -434,7 +420,7 @@ contains
        enddo
     enddo
 
-!print*,'filling ',Nsample-Ngen
+
     !filling the remaining with replicas of the sample plus small scatter
     do iii=Ngen,Nsample
        test=nint(ran_mwc(iseed)*(ngen-1)+1)
