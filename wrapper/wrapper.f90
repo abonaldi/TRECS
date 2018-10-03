@@ -33,7 +33,8 @@ program wrapper
   character*16::lat_tag,lon_tag,x_tag,y_tag
   real(sp),allocatable::data(:,:),column(:)
   real(sp)::sim_area
-  real(dp)::v(3),v0(3),v_diff(3),v_new(3),lat_astro,lon_astro,lat_temp,lon_temp
+  real(dp)::v(3),v0(3),v_diff(3),v_new(3)
+  real(dp)::lat_astro,lon_astro,lat_temp,lon_temp,lat,lon,lat_target,lon_target
   real(dp)::thetam,phim,vnorm,dx,dy,dz,sim_side,sim_radius,pix_side_rad,npixels,npixtot
   CHARACTER(LEN=5) :: output,output2,tag
   CHARACTER(LEN=10) ::output3
@@ -47,7 +48,8 @@ program wrapper
   integer(I4B), dimension(:),  allocatable :: listpix,listpix_copy(:)
   integer(I4B)::nside,nlist,ipix,ipix2
   INTEGER, DIMENSION(8,2) :: values_time
-  REAL(SP) :: clock_time,lat_target,lon_target,lat,lon
+  REAL(SP) :: clock_time
+  !REAL(SP) :: lat_target_rad,lon_target_rad,lat_rad,lon_rad
   integer(4) :: ic4, crate4, cmax4,ni,iseed
   CHARACTER(LEN=*), PARAMETER :: code ="Wrapper"
   TYPE(paramfile_handle) :: handle
@@ -114,6 +116,7 @@ program wrapper
   tunit(:)=''
   tform(:)='1E'
 
+
   do i=1,NFiles
      write(output3,"(i3)")i
      output3=ADJUSTL(output3)
@@ -134,9 +137,9 @@ program wrapper
 
 
   ! generate position vector for the chosen central coordinate
-  thetam=dble(lat_target)*pi/180.d0 !in radians
+  thetam=lat_target*pi/180.d0 !in radians
   thetam=-thetam+pi/2.d0  ! in healpix convention
-  phim=dble(lon_target)*pi/180.d0  !in radians and healpix convention
+  phim=lon_target*pi/180.d0  !in radians and healpix convention
 
   ! coo vector pointing target coordinates
   v0(1)=dsin(thetam)*dcos(phim)
@@ -158,8 +161,7 @@ program wrapper
   print*, 'total number of rows',Nrows
 
 
-!print*,tunit
-!stop
+
   if (do_clustering==0) then
      !initialization necessary for generating random coordinates
      !getting the list of healpix pixels in the area
@@ -210,6 +212,8 @@ program wrapper
         if (tagname ==y_tag) i_y=ii
      enddo
 
+     tform(i_lat)='1D'
+     tform(i_lon)='1D'
      !open first catalogue and read header
      status=0
      filename=outcat
@@ -271,7 +275,7 @@ program wrapper
 
               !add a random shift to coordinates to avoid pixellization effects. Uniform distribution
               lat_temp=lat_astro+(ran_mwc(iseed)-0.5)*pix_side_rad
-              lon_temp=lon_astro+(ran_mwc(iseed)-0.5)*pix_side_rad
+              lon_temp=lon_astro+(ran_mwc(iseed)-0.5)*pix_side_rad/cos(lat_temp)
  
               ! ensure new coordinates are within the healpix range 
               if (lat_temp <0.) lat_temp=lat_temp+Pi
@@ -293,7 +297,6 @@ program wrapper
               lat_astro=(-lat_temp+pi/2.d0)/pi*180.d0
               data(jj,i_lat)=real(lat_astro)
               data(jj,i_lon)=real(lon_astro)
-
            enddo
            print*,'writing'
            print*,'file ',ii,' of',nfiles
@@ -327,32 +330,13 @@ program wrapper
 
            ! project coordinates on sphere and rotate to the chosen position
            do jj=1,nrows_i
-              lat=data(jj,i_y)
-              lon=data(jj,i_x)  
-
-              thetam=dble(lat)*pi/180.d0
-              phim=dble(lon)*pi/180.d0
-
-              dz=dsin(thetam)  ! lat and lon cartesian coordinates 
-              dy=dsin(phim)
-
-              v_diff=(/0.d0,dy,dz/)  ! vectorial distance between centre of the field (0,0,0) and this position in the planar approximation (plane yz)
-
-              v_new=v0+v_diff
-              vnorm=dsqrt(v_new(1)**2.d0+v_new(2)**2.d0+v_new(3)**2.d0)
-              v_new=v_new/vnorm
-
-
-              ! now convert to angular coords
-              call vec2ang(v_new,lat_astro,lon_astro)
-
-              !conversion to degrees and latitude shift 
-              lon_astro=lon_astro/PI*180.d0
-              lat_astro=(-lat_astro+pi/2.d0)/pi*180.d0
-
+              lat=dble(data(jj,i_y))
+              lon=dble(data(jj,i_x))  
+              lat_astro=lat+lat_target
+              thetam=lat_astro*pi/180.d0
+              lon_astro=lon/dcos(thetam)+lon_target
               data(jj,i_lat)=real(lat_astro)
               data(jj,i_lon)=real(lon_astro)
-
            enddo
 
 
