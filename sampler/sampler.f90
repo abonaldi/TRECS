@@ -385,7 +385,7 @@ program sampler
   coo_max=sim_side/2.
   coo_min=-1.*coo_max
   print*,'coordinates',coo_max,coo_min
-
+  
   !AGN simulation follows. If no AGN simulation is needed this is skipped
   if (no_AGN /=0) goto 0101
 
@@ -805,7 +805,7 @@ program sampler
 
                  deallocate(samplex_slice,radioflux_slice)
 
-100           continue
+100              continue
               endif  ! small slice in big slice
 
            enddo ! loop on small slices
@@ -819,7 +819,7 @@ program sampler
               !skip resize and output catalogue if no object is found
               deallocate(radioflux,samplex)
               goto 400 
-           endif 
+           endif
            ! resize Radioflux to the final sample size
            if (buffer_free /=0) then
               print*,'resize final flux ' 
@@ -924,7 +924,7 @@ program sampler
            ! sample from size distribution
            call poisson_constrained(iseed,x2,Px2,0.,2010.,sizes_3d,Nsample)
            print*,'sizes minmax',minval(sizes_3d),maxval(sizes_3d)
-!stop
+           !stop
            deallocate(data2,x2,px2,stat=iostat)
            if (iostat /= 0) then
               print*,'size dealloc failed'
@@ -1207,17 +1207,46 @@ program sampler
            endif
 
 
+           !store the results in the catalogue
+
+
+!!$           do i=1,Nsample
+!!$              catout(1,i)=samplex(i)        !lum_1.4 GHz
+!!$              catout(2:nfreq_out+1,i)=radioflux(4:Nfreq,i)  ! total intensity
+!!$              catout(nfreq_out+2:2*nfreq_out+1,i)=polaflux(4:Nfreq,i)  !polarization
+!!$              catout(2*nfreq_out+2,i)=darkmass(i)      ! mass
+!!$              catout(2*nfreq_out+3,i)=latitudes(i)      !cartesian coordinates - to be projected on the sphere by wrapper
+!!$              catout(2*nfreq_out+4,i)=longitudes(i) 
+!!$              catout(2*nfreq_out+5,i)=0. ! spherical coordinates - to be filled by wrapper
+!!$              catout(2*nfreq_out+6,i)=0. 
+!!$              catout(2*nfreq_out+7,i)=z_gals(i)        ! redshift
+!!$              catout(2*nfreq_out+8,i)=sizes_3d(i)      !intrinsic size
+!!$              catout(2*nfreq_out+9,i)=angles(i)        !view angle
+!!$              catout(2*nfreq_out+10,i)=sizes(i)        ! projected angular size
+!!$              catout(2*nfreq_out+11,i)=spot_dist(i)    ! distance between bright spots (Rs)
+!!$              catout(2*nfreq_out+12,i)=ii+3        ! flag to identify population
+!!$           enddo
+           catout(1,:)=samplex(1:Nsample)        !lum_1.4 GHz
+           catout(2:nfreq_out+1,:)=radioflux(4:Nfreq,:)  ! total intensity
+           catout(nfreq_out+2:2*nfreq_out+1,:)=polaflux(4:Nfreq,:)  !polarization
+           catout(2*nfreq_out+2,:)=darkmass      ! mass
+           catout(2*nfreq_out+3,:)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
+           catout(2*nfreq_out+4,:)=longitudes
+           catout(2*nfreq_out+5,:)=0. ! spherical coordinates - to be filled by wrapper
+           catout(2*nfreq_out+6,:)=0. 
+           catout(2*nfreq_out+7,:)=z_gals       ! redshift
+           catout(2*nfreq_out+8,:)=sizes_3d     !intrinsic size
+           catout(2*nfreq_out+9,:)=angles       !view angle
+           catout(2*nfreq_out+10,:)=sizes       ! projected angular size
+           catout(2*nfreq_out+11,:)=spot_dist   ! distance between bright spots (Rs)
+           catout(2*nfreq_out+12,:)=ii+3        ! flag to identify population
+
            ! compute intrinsic luminosities and store them in the catalogue if requested
-
-           !print*,tagnames(2*nfreq_out+13:3*nfreq_out+12)
-
-
            if (save_lums ==1) then
               allocate(lums_save(Nfreq,Nsample))
-
               do i=1,Nsample
                  zlum=z_gals(i)
-                 conv_flux=1./(4.*pi*(lumr(zlum)*Mpc)**2)*1.e26*(1+zlum) !L [erg/s/Hz] ->S [mJy] 
+                 conv_flux=1./(4.*pi*(lumr(zlum)*Mpc)**2)*1.e26*(1+zlum) !L [erg/s/Hz] ->S [mJy]
                  lums_save(:,i)=log10(radioflux(:,i)/conv_flux)
               enddo
 
@@ -1226,43 +1255,25 @@ program sampler
 
            endif
 
-           !store the results in the catalogue
-           catout(1,:)=samplex        !lum_1.4 GHz
-           catout(2:nfreq_out+1,:)=radioflux(4:Nfreq,:)  ! total intensity
-           catout(nfreq_out+2:2*nfreq_out+1,:)=polaflux(4:Nfreq,:)  !polarization
-           catout(2*nfreq_out+2,:)=darkmass      ! mass
-           catout(2*nfreq_out+3,:)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
-           catout(2*nfreq_out+4,:)=longitudes
-           catout(2*nfreq_out+5,:)=latitudes*0. ! spherical coordinates - to be filled by wrapper
-           catout(2*nfreq_out+6,:)=longitudes*0. 
-           catout(2*nfreq_out+7,:)=z_gals       ! redshift
-           catout(2*nfreq_out+8,:)=sizes_3d     !intrinsic size
-           catout(2*nfreq_out+9,:)=angles       !view angle
-           catout(2*nfreq_out+10,:)=sizes       ! projected angular size
-           catout(2*nfreq_out+11,:)=spot_dist   ! distance between bright spots (Rs)
-           catout(2*nfreq_out+12,:)=ii+3        ! flag to identify population
-
-!quiqui
-
-
+           
+           
            write(output,"(i5)")t
            output=ADJUSTL(output)
            l=LEN_TRIM(output)
 
            ! writing catalogue
            cat_filename=outdir(1:l_outdir)//'/catalogue_z'//zstr//'_'//trim(names(ii))//'.fits'
-
+           
            call write_catalogue(cat_filename,catout,Ncat_agn,tagnames)
-
-           !free memory
+                      !free memory
+         
            deallocate(catout,radioflux,polaflux,samplex,darkmass,latitudes,&
                 &longitudes,z_gals,sizes,sizes_3d,angles,spot_dist,stat=iostat)
-
            if (iostat/=0) then
               print*,'sampler: deallocation error'
               stop
            endif
-
+           
 
 400        continue
 
@@ -1271,6 +1282,7 @@ program sampler
         if (do_clustering==1) deallocate(cone)
      endif
 
+     
   enddo
 
   ! end of AGN modelling
@@ -1797,7 +1809,7 @@ program sampler
               Darkmass(i)=dm_model ! halo mass to associate with BGC instead of satellite         
               satellite_flag(i)=dm_model/darkmass_halo(i) ! galaxy/halo mass ratio  
               if (dm_model >=minmass_cone) satellite_flag(i)=0 ! only galaxies with mass smaller that minimum halo mass in the lightcone are kept as satellites
-              
+
               latitudes(i)=(ran_mwc(iseed)-0.5)*sim_side
               longitudes(i)=(ran_mwc(iseed)-0.5)*sim_side
               z_gals(i)=ran_mwc(iseed)*(zhigh-zlow)+zlow
