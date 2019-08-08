@@ -315,69 +315,13 @@ contains
     return
   end function rms
 
-  !=======================================================================
+
   function ran_mwc(iseed)
-    !=======================================================================
-    !     This routine implements the Marsaglia "multiply with carry method"
-    !     and adds a Marsaglia shift sequence to it.
-    !     (cf. references at http://www.cs.hku.hk/)
-    !     You are welcome to replace this with your preferred generator
-    !     of uniform variates in the interval ]0,1[ (i.e. excluding 0 and 1)
-
-    !     (Re-)initialise with setting iseed to a negative number.
-    !     Note that iseed=0 gives the same sequence as iseed=-1
-    !     After initialisation iseed becomes abs(iseed) (or 1 if it was 0).
-
-    !     B. D. Wandelt, May 1999
-    !=======================================================================
     implicit none
-    integer(I4B), intent(inout):: iseed
-    real(SP) :: ran_mwc
+    integer(I4B)::iseed
+    real(SP)::ran_mwc
 
-    integer(I4B) :: i,iseedl,iseedu,mwc,combined
-    integer(I4B),save :: upper,lower,shifter
-    integer(I4B),parameter :: mask16=65535,mask30=2147483647
-    real(SP),save :: small
-    logical(lgt), save :: first=.true.
-    
-    if (first.or.iseed<=0) then
-       if(iseed==0) iseed=-1
-       iseed=abs(iseed)
-       small=nearest(1.0_sp,-1.0_sp)/mask30
-
-       ! Users often enter small seeds - I spread them out using the
-       ! Marsaglia shifter a few times.
-       shifter=iseed
-       do i=1,9
-          shifter=ieor(shifter,ishft(shifter,13))
-          shifter=ieor(shifter,ishft(shifter,-17))
-          shifter=ieor(shifter,ishft(shifter,5))
-       enddo
-
-       iseedu=ishft(shifter,-16)
-       upper=ishft(iseedu+8765,16)+iseedu !This avoids the fixed points.
-       iseedl=iand(shifter,mask16)
-       lower=ishft(iseedl+4321,16)+iseedl !This avoids the fixed points.
-
-       first=.false.
-    endif
-
-100 continue
-
-    shifter=ieor(shifter,ishft(shifter,13))
-    shifter=ieor(shifter,ishft(shifter,-17))
-    shifter=ieor(shifter,ishft(shifter,5))
-    
-    upper=36969*iand(upper,mask16)+ishft(upper,-16)
-    lower=18000*iand(lower,mask16)+ishft(lower,-16)
-
-    mwc=ishft(upper,16)+iand(lower,mask16)
-
-    combined=iand(mwc,mask30)+iand(shifter,mask30)
-
-    ran_mwc=small*iand(combined,mask30)
-    if(ran_mwc==0._sp) goto 100
-
+    ran_mwc = rand()
     return
   end function ran_mwc
 
