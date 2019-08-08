@@ -70,7 +70,8 @@ program sampler
   real(sp),allocatable::masses_lerg(:),masses_herg(:),lerg_p(:),herg_p(:)
   REAL(SP) :: clock_time,coo_max,coo_min,dlat,dlon,dz,delta_perp,delta_parall
   REAL(SP) ::deltatheta,deltaz,mu,flux14,dmtol,mgal,ncone_binned
-  real(sp)::dm_model,dm_model2,dm_best,lat,lon,maxflux(1),redshift,minmass,minmass_cone,dim,lum_threshold,theta_high,theta_low,sin_i,logs,alpha_low
+  real(sp)::dm_model,dm_model2,dm_best,lat,lon,maxflux(1),redshift,minmass,minmass_cone
+  real(sp)::dim,lum_threshold,theta_high,theta_low,sin_i,logs,alpha_low
   real(sp)::alpha_high,minfreq,norm_f,dlogl,col,b,a,arg1,arg2,th,freq_norm
   real(sp)::minm(Nmbins),maxm(Nmbins),mc(1),halfmax(1),mw(1),sg_m(1)
   real(sp),parameter::sigma_alpha=2.35660,mean_alpha=0.609847 
@@ -92,7 +93,7 @@ program sampler
   integer*8::Nsample,Nsample_lerg,Nsample_herg,join,k,n_hist,nside,ntiles,t
   integer::iseed,Nfreq,Nfreq_out,i,ii,nrows,Ncolumns,Ncolumns_lf,nskip,Ngen,Ngen2,jj,kk
   integer::buffer_size,buffer_free,jbuf,buffer_free_old,buffer_size_old,l_outdir
-  integer::count,Ncat_sfr,Ncat_agn,nrows_lerg,nrows_herg,seed(12),nrows_old,nrows_lf
+  integer::count,Ncat_sfr,Ncat_agn,nrows_lerg,nrows_herg,seed(34),nrows_old,nrows_lf
   integer::Nsample_old,Nfunction,Nsample_surv,Nhaloes,Nsample_mass,nreds_out
   integer::l,j,nreds,nreds2,nreds_cone,zi,nloop,ist,iostat,nreds_lum,islice
   integer(4) :: ic4, crate4, cmax4,ni,sum_plus,p14(1),i14,ilim,i48,p(1),p_i,try
