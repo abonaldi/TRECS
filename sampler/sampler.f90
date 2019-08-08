@@ -1160,7 +1160,7 @@ program sampler
 
                     ! assign the galaxy to the closest halo mass in the mass bin
                     fom_old=abs(mgal-cone(istart_i,1)) !initialise distance betweem model mass and halo mass
-                    p_i=istart_i 
+                    p_i=istart_i+1
 
                     do iii=istart_i+1,iend_i
                        fom=abs(mgal-cone(iii,1))
@@ -1874,7 +1874,7 @@ program sampler
 !!$                    ! assign the galaxy to the closest halo mass in the mass bin
                        fom_old=abs(mgal-cone(istart_i,1)) !initialise distance betweem model mass and halo mass
                        ! associate galaxy to the closest available mass
-                       p_i=istart_i 
+                       p_i=istart_i+1
                        do iii=istart_i+1,iend_i
                           fom=abs(mgal-cone(iii,1))
                           if (fom<fom_old) then
