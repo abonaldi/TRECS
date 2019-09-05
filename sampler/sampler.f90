@@ -22,8 +22,8 @@ program sampler
        parse_string, parse_double, parse_lgt, concatnl, parse_real
   USE extension, ONLY : getEnvironment, getArgument, nArguments
   implicit none
-  !parameters
 
+  !parameters
   real(sp),parameter::zmax=8.
   CHARACTER(LEN=*), PARAMETER :: code ="T-RECS"
   real(dp),parameter:: fullsky_area=41253._dp
@@ -60,13 +60,12 @@ program sampler
   real(sp),allocatable::delta(:),work(:,:),diff(:)
   real(sp),allocatable::Radioflux(:,:),catout(:,:),samplex(:),lums(:),z_gals(:)
   real(sp),allocatable::Polaflux(:,:),inclinations(:),ellipticity1(:),ellipticity2(:),polafracs(:),lums_save(:,:)
+  real(sp)::sample100(100)
   real(sp),allocatable::Radioflux_copy(:,:),samplex_copy(:),sizes(:),radioflux_slice(:,:),lums_slice(:)
   real(sp),allocatable::angles(:),sizes_3d(:),lums_copy(:),spot_dist(:)
-
   real(sp),allocatable::darkmass(:),darkmass_halo(:),latitudes(:),longitudes(:),cone(:,:),cone_old(:,:)
   real(sp),allocatable::samplex_run(:),redshifts(:),L14(:)
   real(sp),allocatable::masses_L14(:),redshifts_lum(:),samplex_slice(:),satellite_flag(:)
-
   real(sp),allocatable::masses_lerg(:),masses_herg(:),lerg_p(:),herg_p(:)
   REAL(SP) :: clock_time,coo_max,coo_min,dlat,dlon,dz,delta_perp,delta_parall
   REAL(SP) ::deltatheta,deltaz,mu,flux14,dmtol,mgal,ncone_binned
@@ -90,7 +89,7 @@ program sampler
 
   !integer variables
   integer::no_AGN,no_SFG,save_lums,do_clustering,Nsample_binned,istart(1),iend(1),istart_i,iend_i,iii
-  integer*8::Nsample,Nsample_lerg,Nsample_herg,join,k,n_hist,nside,ntiles,t
+  integer*8::Nsample,Nsample_lerg,Nsample_herg,join,k,n_hist,nside,ntiles,t,Nsample100
   integer::iseed,Nfreq,Nfreq_out,i,ii,nrows,Ncolumns,Ncolumns_lf,nskip,Ngen,Ngen2,jj,kk
   integer::buffer_size,buffer_free,jbuf,buffer_free_old,buffer_size_old,l_outdir
   integer::count,Ncat_sfr,Ncat_agn,nrows_lerg,nrows_herg,seed(34),nrows_old,nrows_lf
@@ -105,7 +104,6 @@ program sampler
   TYPE(paramfile_handle) :: handle
 
   save iseed
-
 
   call date_and_time(values = values_time(:,1))
   call system_clock(count=ic4, count_rate=crate4, count_max=cmax4)
@@ -386,7 +384,7 @@ program sampler
   coo_max=sim_side/2.
   coo_min=-1.*coo_max
   print*,'coordinates',coo_max,coo_min
-  
+
   !AGN simulation follows. If no AGN simulation is needed this is skipped
   if (no_AGN /=0) goto 0101
 
@@ -852,7 +850,7 @@ program sampler
               endif
            endif
            ! total intensity flux completed, flux selection completed
-           print*,'done'
+
 
            !From here everything is done on the big slice
 
@@ -869,8 +867,19 @@ program sampler
               stop
            endif
 
-           !poisson-sample from the polarization PDF but on the same Nsample objects already extracted
-           call poisson_constrained(iseed,x3,Px3,0.,100.,polafracs,Nsample)
+           ! poisson-sample from the polarization PDF but on the same Nsample objects already extracted
+           ! not very accurate for very small samples: I use a minimum sample of 100 end extract randomly from that sample if Nsample<100 
+           if (Nsample >=100) then 
+              call poisson_constrained(iseed,x3,Px3,0.,100.,polafracs,Nsample) 
+           else
+              Nsample100=100
+              sample100(:)=0.
+              call poisson_constrained(iseed,x3,Px3,0.,100.,sample100,Nsample100)
+              call reordersample(iseed,sample100)
+              do i=1,Nsample
+                 polafracs(i)=sample100(i)
+              enddo
+           endif
 
            do i=1,Nfreq
               polaflux(i,:)=polafracs/100.*radioflux(i,:)
@@ -884,12 +893,20 @@ program sampler
                    &,alphascaling_highf_pola,spec,frequencies)
               polaflux(:,i)=spec
            enddo
-           deallocate(polafracs)
+           deallocate(polafracs,stat=iostat)
+           if (iostat /=0) then
+              print*,'Dellocation error'
+              stop
+           endif
            !end polarization model
 
            !allocate arrays to store the other results
            allocate(Darkmass(Nsample),latitudes(Nsample),longitudes(Nsample),&
-                &z_gals(Nsample),sizes_3d(Nsample),sizes(Nsample),angles(Nsample),spot_dist(Nsample))
+                &z_gals(Nsample),sizes_3d(Nsample),sizes(Nsample),angles(Nsample),spot_dist(Nsample),stat=iostat)
+           if (iostat /=0) then
+              print*,'Allocation error'
+              stop
+           endif
 
            ! size and view angle from precomputed distributions
            spot_dist(:)=0. !Distance between two bright posts! 
@@ -915,15 +932,22 @@ program sampler
            dx2=abs(x2(2)-x2(1))
            N=Nrows
 
-!!$           allocate(poisson_numbers(N),stat=iostat)
-!!$if (iostat /= 0) then
-!!$              print*,'sizes allocation failed 2'
-!!$              stop
-!!$           endif
 
 
            ! sample from size distribution
-           call poisson_constrained(iseed,x2,Px2,0.,2010.,sizes_3d,Nsample)
+           !call poisson_constrained(iseed,x2,Px2,0.,2010.,sizes_3d,Nsample)
+           if (Nsample >=100) then 
+              call poisson_constrained(iseed,x2,Px2,0.,2010.,sizes_3d,Nsample)
+           else
+              Nsample100=100
+              sample100(:)=0.
+              call poisson_constrained(iseed,x2,Px2,0.,2010.,sample100,Nsample100)
+              call reordersample(iseed,sample100)
+              do i=1,Nsample
+                 sizes_3d(i)=sample100(i)
+              enddo
+           endif
+
            print*,'sizes minmax',minval(sizes_3d),maxval(sizes_3d)
            !stop
            deallocate(data2,x2,px2,stat=iostat)
@@ -1207,26 +1231,6 @@ program sampler
               stop
            endif
 
-
-           !store the results in the catalogue
-
-
-!!$           do i=1,Nsample
-!!$              catout(1,i)=samplex(i)        !lum_1.4 GHz
-!!$              catout(2:nfreq_out+1,i)=radioflux(4:Nfreq,i)  ! total intensity
-!!$              catout(nfreq_out+2:2*nfreq_out+1,i)=polaflux(4:Nfreq,i)  !polarization
-!!$              catout(2*nfreq_out+2,i)=darkmass(i)      ! mass
-!!$              catout(2*nfreq_out+3,i)=latitudes(i)      !cartesian coordinates - to be projected on the sphere by wrapper
-!!$              catout(2*nfreq_out+4,i)=longitudes(i) 
-!!$              catout(2*nfreq_out+5,i)=0. ! spherical coordinates - to be filled by wrapper
-!!$              catout(2*nfreq_out+6,i)=0. 
-!!$              catout(2*nfreq_out+7,i)=z_gals(i)        ! redshift
-!!$              catout(2*nfreq_out+8,i)=sizes_3d(i)      !intrinsic size
-!!$              catout(2*nfreq_out+9,i)=angles(i)        !view angle
-!!$              catout(2*nfreq_out+10,i)=sizes(i)        ! projected angular size
-!!$              catout(2*nfreq_out+11,i)=spot_dist(i)    ! distance between bright spots (Rs)
-!!$              catout(2*nfreq_out+12,i)=ii+3        ! flag to identify population
-!!$           enddo
            catout(1,:)=samplex(1:Nsample)        !lum_1.4 GHz
            catout(2:nfreq_out+1,:)=radioflux(4:Nfreq,:)  ! total intensity
            catout(nfreq_out+2:2*nfreq_out+1,:)=polaflux(4:Nfreq,:)  !polarization
@@ -1242,6 +1246,7 @@ program sampler
            catout(2*nfreq_out+11,:)=spot_dist   ! distance between bright spots (Rs)
            catout(2*nfreq_out+12,:)=ii+3        ! flag to identify population
 
+
            ! compute intrinsic luminosities and store them in the catalogue if requested
            if (save_lums ==1) then
               allocate(lums_save(Nfreq,Nsample))
@@ -1256,26 +1261,24 @@ program sampler
 
            endif
 
-           
-           
+
            write(output,"(i5)")t
            output=ADJUSTL(output)
            l=LEN_TRIM(output)
 
            ! writing catalogue
            cat_filename=outdir(1:l_outdir)//'/catalogue_z'//zstr//'_'//trim(names(ii))//'.fits'
-           
+
            call write_catalogue(cat_filename,catout,Ncat_agn,tagnames)
-                      !free memory
-         
+           !free memory
            deallocate(catout,radioflux,polaflux,samplex,darkmass,latitudes,&
                 &longitudes,z_gals,sizes,sizes_3d,angles,spot_dist,stat=iostat)
            if (iostat/=0) then
               print*,'sampler: deallocation error'
               stop
            endif
-           
 
+           print*,'done'
 400        continue
 
         enddo
@@ -1283,7 +1286,7 @@ program sampler
         if (do_clustering==1) deallocate(cone)
      endif
 
-     
+
   enddo
 
   ! end of AGN modelling
@@ -1593,8 +1596,8 @@ program sampler
               call Lsynch(frequencies_rest,sfr,Lsyn) !Lsyn is average value 
               call Lff(frequencies_rest,sfr,Lfree) 
               !syn+ff with a scatter (evolution relation by Magnelli et al. )
-              test=3.5 !max value for the gaussian random number, giving maximum possible flux for the source
-
+              !test=3.5 !max value for the gaussian random number, giving maximum possible flux for the source  !AB sep19 old version: why is this fixed and not random? this should give the scatter!!
+              test=randgauss_boxmuller(iseed)  ! AB sep19: new version
               delta=10.0000**(log10(Lsyn+Lfree)+test*0.4000+2.3500*(1.0000 -(1.0000 +z)**(-0.1200))) 
               if (minval(delta)<0.) delta(:)=0. 
               test=(delta(ilim)+Ld(ilim)*sfr)*conv_flux ! add dust SED
@@ -1798,7 +1801,22 @@ program sampler
 
 
            ! initialise mass for all galaxies as satellite galaxies
-           call poisson_constrained(iseed,x2,Px2,5.,15.,Darkmass_halo,Nsample)
+           !call poisson_constrained(iseed,x2,Px2,5.,15.,Darkmass_halo,Nsample)
+
+           if (Nsample >=100) then 
+              call poisson_constrained(iseed,x2,Px2,5.,15.,Darkmass_halo,Nsample)
+           else
+              Nsample100=100
+              sample100(:)=0.
+              call poisson_constrained(iseed,x2,Px2,5.,15.,sample100,Nsample100)
+              call reordersample(iseed,sample100)
+              do i=1,Nsample
+                 darkmass_halo(i)=sample100(i)
+              enddo
+           endif
+
+
+
            !mass is that of the halo hosting a satellite
            deallocate(x2,px2,data2)
 
@@ -1966,7 +1984,18 @@ program sampler
               px2(i)=x2(i)*((cos(arg1))**2 *exp(-1.*arg2))
            enddo
 
-           call poisson_constrained(iseed,x2,Px2,0.,1.,ellipticity1,Nsample)
+           !call poisson_constrained(iseed,x2,Px2,0.,1.,ellipticity1,Nsample)
+           if (Nsample >=100) then 
+              call poisson_constrained(iseed,x2,Px2,0.,1.,ellipticity1,Nsample)
+           else
+              Nsample100=100
+              sample100(:)=0.
+              call poisson_constrained(iseed,x2,Px2,0.,1.,sample100,Nsample100)
+              call reordersample(iseed,sample100)
+              do i=1,Nsample
+                 ellipticity1(i)=sample100(i)
+              enddo
+           endif
            deallocate(x2,px2)
 
 
