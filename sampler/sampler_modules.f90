@@ -326,36 +326,75 @@ contains
   end function ran_mwc
 
 
+  subroutine reordersample(iseed,sample)
+    !reordering a vector in a random order
+    implicit none
+    real(sp)::sample(:)
+    real(sp),allocatable::samplecopy(:),ordersample(:)
+    integer::N,i,p(1),iseed
+
+
+    N=size(sample)
+
+    allocate(samplecopy(N),ordersample(N))
+
+    samplecopy=sample
+
+    do i=1,N
+       ordersample(i)=ran_mwc(iseed)
+    enddo
+
+
+    do i=1,N
+       P=minloc(ordersample)
+       ordersample(P(1))=2. 
+       sample(i)=samplecopy(P(1))
+    enddo
+    deallocate(samplecopy,ordersample)
+
+
+
+  end subroutine reordersample
+
   subroutine poisson_constrained(iseed,x,Px,xmin_prior,xmax_prior,sample,Nsample)
     !extract poisson samples from a distribution with the constraint of the total number of objects 
     implicit none
     real(sp)::sample(:),mu,norm,xmin_prior,xmax_prior,sg
 !    real(sp)::x_m(1),x_w1(1),x_w2(1),halfmax(1),sg1(1),sg2(1)
-    real(dp)::px(:),x(:),dx,xmin,xmax
-    integer::i,N,j,iii,p(1),iseed,Nran,test
+    real(dp)::px(:),x(:),dx,xmin,xmax,peakval
+    integer::i,N,j,iii,p(1),iseed,Nran,test,jjj
     integer*8::Nsample,Ngen,iostat,p_m(1)
     logical::first=.true.
 
+    ! this does not work very well with very small samples (<10). Consider havong a miminum sample size and extracting a subsample if necessary
 
 
-    
+    sample(:)=0.
     dx=abs(x(2)-x(1))
     sg=dx/3. ! scatter for the additional samples
     N=size(x)
+    
+    norm=real(Nsample)/sum(px) 
+    
 
-    norm=real(Nsample)/sum(px)
+!print*,Nsample,norm
 
 !poisson sampling the original distribution. the number of objects could be larger or smaller than the number required
     iii=1
+    j=1 ! position of peack distribution
+    peakval=0.d0
+    Ngen=0 !initialise
     do i=1,N
        mu=real(Px(i)*norm)
        Nran=random_Poisson(mu, first)! integer from poisson distribution with mean mu
-
        xmax=x(i)+dx/2
        xmin=x(i)-dx/2
        if (xmin < xmin_prior) xmin=xmin_prior
        if (xmax > xmax_prior) xmax=xmax_prior
-
+       if (px(i) > peakval) then 
+          j=i
+          peakval=px(i)
+       endif
        do j=1,Nran
           sample(iii)=ran_mwc(iseed)*(xmax-xmin)+xmin
           Ngen=iii
@@ -364,6 +403,15 @@ contains
        enddo
     enddo
 
+    ! if the sample is empty after the poisson run, fill the first element with value of peak of distribution
+    if (Ngen==0) then 
+       xmax=x(j)+dx/2
+       xmin=x(j)-dx/2
+       if (xmin < xmin_prior) xmin=xmin_prior
+       if (xmax > xmax_prior) xmax=xmax_prior
+       sample(1)=ran_mwc(iseed)*(xmax-xmin)+xmin
+       Ngen=1
+    endif
 
     !filling the remaining with replicas of the sample plus small scatter
     do iii=Ngen,Nsample
@@ -372,6 +420,7 @@ contains
        if (sample(iii) < xmin_prior) sample(iii)=xmin_prior
        if (sample(iii) > xmax_prior) sample(iii)=xmax_prior
     enddo
+
 
 
 
