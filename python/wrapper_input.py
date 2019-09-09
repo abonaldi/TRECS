@@ -93,9 +93,9 @@ def collate_agns(folder1,folder2,lat_target,lon_target,sim_side,do_clustering,ta
 #folder1='/home/a.bonaldi/data_challenges/inputs/T-RECS_cats/run1/'
 #tag='chall_1'
 
-folder1='/home/a.bonaldi/local2/scratch/Bonaldi/Radio_srccnt/runs_Mvaccari/'
-folder2='/home/a.bonaldi/local2/scratch/Bonaldi/Radio_srccnt/'
-tag='Mvaccari'
+folder1='/home/a.bonaldi/local2/scratch/Bonaldi/Radio_srccnt/runs_test3/'
+folder2='/home/a.bonaldi/local2/scratch/Bonaldi/Radio_srccnt/runs_test3/'
+tag='sep19_2'
 
 
 lat_target=-30.
@@ -103,7 +103,7 @@ lon_target=0.
 
 do_clustering=1
 #sim_side=3.
-sim_side=3.2
+sim_side=5.
 
 #folder2='../'
 #folder1='../tests/'

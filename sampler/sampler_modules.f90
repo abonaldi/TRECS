@@ -321,7 +321,8 @@ contains
     integer(I4B)::iseed
     real(SP)::ran_mwc
 
-    ran_mwc = rand()
+    ran_mwc = rand(0)
+
     return
   end function ran_mwc
 
@@ -604,7 +605,7 @@ subroutine Lsynch(nu,sfr,L)
   subroutine effective_index(i14,i48,ii,alpha,alphascaling_lowf,alphascaling_highf,radioflux_i,frequencies)
     implicit none
     integer::i14,i48,i,p(1),iseed,jj,ii,Nfreq
-    real(sp)::radioflux_i(:),alpha_low,alpha_high,norm_f,logs
+    real(sp)::radioflux_i(:),alpha_low,alpha_high,norm_f,logs,alphascat
     real(dp),intent(in)::alphascaling_lowf(:,:),alphascaling_highf(:,:),frequencies(:),alpha
 
    
@@ -612,11 +613,25 @@ subroutine Lsynch(nu,sfr,L)
     logs=log10(radioflux_i(i14))-3.  !1.4 GHz log flux Jy  !1.4 GHz log flux Jy
     p=minloc(abs(alphascaling_lowf(:,1)-logs))
 
+    alphascat=randgauss_boxmuller(iseed)*0.25
+    alpha_low=alphascaling_lowf(p(1),ii+1)+alphascat
 
-    alpha_low=alphascaling_lowf(p(1),ii+1)+randgauss_boxmuller(iseed)*0.25
+    !    Radioflux_i(:)=(Radioflux_i(i14)*(frequencies/1400.)**alpha_low) !orig
 
-    
-    Radioflux_i(:)=(Radioflux_i(i14)*(frequencies/1400.)**alpha_low)
+    ! test 6/9/19: I use the effective indev only for v>1400
+    alphascat=alpha+alphascat ! Bonato mean indices 
+
+
+!print*,'indices=',alpha_low,alphascat
+!stop
+    do jj=1,Nfreq
+       if (frequencies(jj) > 1400.) then
+          Radioflux_i(jj)=(Radioflux_i(i14)*(frequencies(jj)/1400.)**alpha_low)
+       else
+          Radioflux_i(jj)=(Radioflux_i(i14)*(frequencies(jj)/1400.)**alphascat)
+       endif
+    enddo
+
 
     !now up to 4.8 GHz flux is correct
     logs=log10(radioflux_i(i48))-3.  !4.8 GHz log flux Jy

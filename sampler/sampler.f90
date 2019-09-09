@@ -84,7 +84,7 @@ program sampler
   real(dp),allocatable::alphascaling_lowf(:,:),alphascaling_highf(:,:)
   real(dp),allocatable::poladistr(:,:),alphascaling_lowf_pola(:,:),alphascaling_highf_pola(:,:)
   real(dp)::alphamed(3),z,alpha,conv_flux,zlow,zhigh,nfullsky,it,Ngen_db,z_i
-  real(dp)::dx,xmin,xmax,val,test,thr,norm,over,dx2,lumlim
+  real(dp)::dx,xmin,xmax,val,test,thr,norm,over,dx2,lumlim,deltax
   real(dp)::zlow_lum,zhigh_lum,zlum,par_2,sigma_lin,L_stop_2
 
   !integer variables
@@ -108,6 +108,8 @@ program sampler
   call date_and_time(values = values_time(:,1))
   call system_clock(count=ic4, count_rate=crate4, count_max=cmax4)
   iseed=ic4
+  test=rand(time())
+
 
   ! check calling sequence
   if (nArguments() == 0) then
@@ -723,6 +725,7 @@ program sampler
                  call read_columns(AGN_filename,2,nrows_lf,Ncolumns_lf,nskip,data)
 
                  x=data(:,2) ! log of characteristic luminosity
+                 deltax=x(2)-x(1) ! luminosity bin size    
                  px=10.**data(:,ii+3) !N(logl) per sterad 
                  norm=sim_area/sterad_deg  
 
@@ -746,7 +749,7 @@ program sampler
                  do i=1,Nrows_lf
                     Nran=poisson_numbers(i)
                     do j=1,Nran
-                       samplex_slice(iii)=x(i) 
+                       samplex_slice(iii)=x(i)+ran_mwc(iseed)*dx 
                        iii=iii+1
                     enddo
 
@@ -767,6 +770,13 @@ program sampler
                     call effective_index(i14,i48,ii,alpha,alphascaling_lowf&
                          &,alphascaling_highf,spec,frequencies)
                     radioflux_slice(:,i)=spec
+
+!do j=1,Nfreq
+
+!print*,frequencies(j),spec(j)
+!enddo
+!stop
+
 
                     !implement flux threshold
                     if (Radioflux_slice(ilim,i)>= fluxlim*1000.) Nsample_surv= Nsample_surv+1
@@ -1596,8 +1606,7 @@ program sampler
               call Lsynch(frequencies_rest,sfr,Lsyn) !Lsyn is average value 
               call Lff(frequencies_rest,sfr,Lfree) 
               !syn+ff with a scatter (evolution relation by Magnelli et al. )
-              !test=3.5 !max value for the gaussian random number, giving maximum possible flux for the source  !AB sep19 old version: why is this fixed and not random? this should give the scatter!!
-              test=randgauss_boxmuller(iseed)  ! AB sep19: new version
+              test=randgauss_boxmuller(iseed)  
               delta=10.0000**(log10(Lsyn+Lfree)+test*0.4000+2.3500*(1.0000 -(1.0000 +z)**(-0.1200))) 
               if (minval(delta)<0.) delta(:)=0. 
               test=(delta(ilim)+Ld(ilim)*sfr)*conv_flux ! add dust SED
