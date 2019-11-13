@@ -93,13 +93,19 @@ def collate_agns(folder1,folder2,lat_target,lon_target,sim_side,do_clustering,ta
 #folder1='/home/a.bonaldi/data_challenges/inputs/T-RECS_cats/run1/'
 #tag='chall_1'
 
-folder1='/home/a.bonaldi/local2/scratch/Bonaldi/Radio_srccnt/runs_test3/'
-folder2='/home/a.bonaldi/local2/scratch/Bonaldi/Radio_srccnt/runs_test3/'
-tag='sep19_2'
+folder1='/home/a.bonaldi/local2/scratch/Bonaldi/Radio_srccnt/run_WLreso'
+folder2='/home/a.bonaldi/local2/scratch/Bonaldi/Radio_srccnt/run_WLreso'
+
+tag='1650'
 
 
-lat_target=-30.
-lon_target=0.
+#folder1='/home/a.bonaldi/local2/scratch/Bonaldi/Radio_srccnt/runs_LoTSS4/'
+#folder2=folder1
+#tag='wide_LoTSS'
+
+
+#lat_target=-30.
+#lon_target=0.
 
 do_clustering=1
 #sim_side=3.
@@ -109,8 +115,8 @@ sim_side=5.
 #folder1='../tests/'
 #tag='test'
 
-#lat_target=0.
-#lon_target=0.
+lat_target=0.
+lon_target=0.
 
 #do_clustering=1
 #sim_side=5.
@@ -123,6 +129,6 @@ except OSError:
 
 
 
-collate_agns(folder1,folder2,lat_target,lon_target,sim_side,do_clustering,tag)
+#collate_agns(folder1,folder2,lat_target,lon_target,sim_side,do_clustering,tag)
 collate_sfgs(folder1,folder2,lat_target,lon_target,sim_side,do_clustering,tag)
 

@@ -43,7 +43,7 @@ program sampler
   character(LEN=filenamelen)::filename1,filename2,filename3,filename4,filename5,filename6
   character(LEN=filenamelen)::filename7,filename8,filename9,filename10
   character(LEN=filenamelen)::AGN_filename,LERG_filename,HERG_filename
-  character(LEN=filenamelen)::cone_filename,chline,filestat,cat_filename
+  character(LEN=filenamelen)::chline,filestat,cat_filename
   character(LEN=10),allocatable::tagnames(:)
   character(LEN=10)::names(3)
   CHARACTER(LEN=5) :: output,output2,tag
@@ -58,12 +58,12 @@ program sampler
   !real(sp)::center_lat,center_lon
   real(sp)::z_min,z_max
   real(sp),allocatable::delta(:),work(:,:),diff(:)
-  real(sp),allocatable::Radioflux(:,:),catout(:,:),samplex(:),lums(:),z_gals(:)
+  real(sp),allocatable::Radioflux(:,:),catout(:,:),catout_copy(:,:),samplex(:),lums(:),z_gals(:)
   real(sp),allocatable::Polaflux(:,:),inclinations(:),ellipticity1(:),ellipticity2(:),polafracs(:),lums_save(:,:)
   real(sp)::sample100(100)
   real(sp),allocatable::Radioflux_copy(:,:),samplex_copy(:),sizes(:),radioflux_slice(:,:),lums_slice(:)
   real(sp),allocatable::angles(:),sizes_3d(:),lums_copy(:),spot_dist(:)
-  real(sp),allocatable::darkmass(:),darkmass_halo(:),latitudes(:),longitudes(:),cone(:,:),cone_old(:,:)
+  real(sp),allocatable::darkmass(:),darkmass_halo(:),latitudes(:),longitudes(:)
   real(sp),allocatable::samplex_run(:),redshifts(:),L14(:)
   real(sp),allocatable::masses_L14(:),redshifts_lum(:),samplex_slice(:),satellite_flag(:)
   real(sp),allocatable::masses_lerg(:),masses_herg(:),lerg_p(:),herg_p(:)
@@ -88,7 +88,7 @@ program sampler
   real(dp)::zlow_lum,zhigh_lum,zlum,par_2,sigma_lin,L_stop_2
 
   !integer variables
-  integer::no_AGN,no_SFG,save_lums,do_clustering,Nsample_binned,istart(1),iend(1),istart_i,iend_i,iii
+  integer::no_AGN,no_SFG,save_lums,Nsample_binned,istart(1),iend(1),istart_i,iend_i,iii,jstart
   integer*8::Nsample,Nsample_lerg,Nsample_herg,join,k,n_hist,nside,ntiles,t,Nsample100
   integer::iseed,Nfreq,Nfreq_out,i,ii,nrows,Ncolumns,Ncolumns_lf,nskip,Ngen,Ngen2,jj,kk
   integer::buffer_size,buffer_free,jbuf,buffer_free_old,buffer_size_old,l_outdir
@@ -132,6 +132,7 @@ program sampler
   !*************************************                                                                                       
   !read input parameters from file or interactively                                                                                        
   !************************************                                                                                        
+
   handle = parse_init(paramfile)
 
   description = concatnl( &
@@ -161,10 +162,6 @@ program sampler
   description = concatnl( &
        & " Do you want to output the luminosities (0=no, 1=yes)? ")
   save_lums = parse_int(handle, 'save_lums', default=0, vmax=1, descr=description)
-
-  description = concatnl( &
-       & " Do you want to simulate clustering (only for a max size=5, 0=no, 1=yes)?")
-  do_clustering = parse_int(handle, 'do_clustering', default=0, vmax=1, descr=description)
 
   description = concatnl( &
        & " Enter the minimum redhift to consider: ")
@@ -231,13 +228,6 @@ program sampler
   skyfrac=sim_area/fullsky_area
 
   print*,'simulation area [square degrees]=',sim_area
-
-  ! the lightcone for the clustering simulation if 5X5 degs. Stopping if asked to do clustering simulation bigger than this
-  if ((sim_side > 5.) .and. (do_clustering==1)) then
-     print*,'Error:'
-     print*,'Clustering not supported for simulation size bigger than 5X5'
-     stop
-  endif
 
 
   !read input files with effective spectral indices for the AGN frequency behaviour
@@ -538,7 +528,7 @@ program sampler
 
      z=redshifts(zi)
 
-     if ((z_min <= z) .and. (z_max > z)) then    ! redshift slice with center z is processed
+     if ((z_min <= z) .and. (z_max >= z)) then    ! redshift slice with center z is processed
 
         !getting the size of the redshift slice
         delta_perp=1. 
@@ -582,104 +572,14 @@ program sampler
         deallocate(data)
         !reading done
 
-        if (do_clustering==1) then 
-           ! preprocessing for AGN clustering:
-           ! reading the slice of lightcone with dark halo masses and their position
-
-           cone_filename='../../TRECS_Inputs/cones/cone_5X5_z'//zstr//'.txt_sort' 
-           Ncolumns=4
-           nrows=rows_number(cone_filename,1,nskip)
-           Nhaloes=nrows
-
-           if (nrows ==0) then 
-              print*,'no file found!'
-              stop
-           endif
-
-           allocate(cone(nrows,ncolumns))
-           call read_columns_s(cone_filename,2,nrows,Ncolumns,nskip,cone)
-           !reading done
-
-
-           !check that the size of the cone is big enough
-           if ((minval(cone(:,3)) >  -0.95*sim_side/2.) .or.  (maxval(cone(:,3)) <0.95*sim_side/2.  ) &
-                &.or. (minval(cone(:,4)) >  -0.95*sim_side/2.) .or.  (maxval(cone(:,4)) <0.95*sim_side/2.)) then 
-              print*,'Error: cone size too small!'
-              print*,cone_filename
-              stop
-           endif
-
-           ! if the cone is too big, extract a smaller cone from its centre
-           if ((minval(cone(:,3)) <  -1.*sim_side/2.) .or.  (maxval(cone(:,3)) >sim_side/2.  ) .or. &
-                &(minval(cone(:,4)) <  -1.*sim_side/2.) .or.  (maxval(cone(:,4)) >sim_side/2.)) then
-              print*,'resizing the cone to size',sim_side
-
-              !copy cone to old cone
-              nrows_old=nrows
-              allocate(cone_old(nrows_old,ncolumns))
-              cone_old=cone
-              deallocate(cone)
-              ! count number of objects for the new cone
-              nrows=0
-              do i=1,nrows_old
-                 if ((abs(cone_old(i,3)) <= sim_side/2.) .and. (abs(cone_old(i,4)) <= sim_side/2.)) nrows=nrows+1
-              enddo
-              Nhaloes=nrows
-              print*,'new number of haloes',nrows
-
-              allocate(cone(nrows,ncolumns))
-              ii=0
-              do i=1,nrows_old
-                 if ((abs(cone_old(i,3)) <= sim_side/2.) .and. (abs(cone_old(i,4)) <= sim_side/2.)) then
-                    ii=ii+1
-                    cone(ii,:)=cone_old(i,:)
-                 endif
-              enddo
-
-              deallocate(cone_old)
-           endif
-           ! end resize cone if too big
-
-           ! printing info on the cone
-           print*,'************'
-           print*,'cone masses',minval(cone(:,1)),maxval(cone(:,1))
-           print*,'cone redshifts',minval(cone(:,2)),maxval(cone(:,2))
-           print*,'cone lats',minval(cone(:,3)),maxval(cone(:,3))
-           print*,'cone lons',minval(cone(:,4)),maxval(cone(:,4))
-           print*,'************'
-
-
-
-           !indexing cone by mass to make mass matching quicker
-           !creating Nmbins mass bins for the cone
-           ncone_binned=real(Nhaloes)/real(Nmbins)
-           nsample_binned=int(ncone_binned)+1  ! 
-
-           ! computing min/max mass for each mass bin based on the mass distribution of the cone 
-           !similar number of objects in each mass bin, for efficiency
-           do i=1,Nmbins 
-              istart=maxval((/(i-1)*nsample_binned,1/))
-              iend=minval((/i*nsample_binned,Nhaloes/))
-              istart_i=istart(1)
-              iend_i=iend(1)
-              minm(i)=cone(istart_i,1)
-              maxm(i)=cone(iend_i,1)
-              if (iend_i > Nhaloes) goto 112
-           enddo
-
-112        continue
-
-
-        endif ! end if do_clustering=1
-
-
+        Nsample_old=0
         do ii=1,3 !loop on AGN populations  
            ! information for limiting ram usage
            ! processing long files in chuncks of lenght buffer_size
            buffer_size=1000
            buffer_free=buffer_size
            jbuf=0 ! index to fill buffer 
-
+ 
            ! here allocate Radioflux to store total intensity results
            allocate(Radioflux(Nfreq,buffer_size),samplex(buffer_size))
 
@@ -1159,66 +1059,7 @@ program sampler
               z_gals(i)=ran_mwc(iseed)*(zhigh-zlow)+zlow
            enddo
 
-           ! clustering: associate galaxies to dark haloes of a lightcone from a cosmo simulation
-           if (do_clustering==1) then
-              print*,'clustering starts'
-              minmass=minval(Darkmass)
-              print*,'number of haloes',Nhaloes
-              print*,'number of galaxies',Nsample
-
-              do i=1,Nsample
-                 mgal=darkmass(i)
-
-                 if ((mgal >=minm(1)) .and. (mgal<=maxm(Nmbins))) then ! otherwise a random position has been assigned already
-                    !compare mass of the galaxy with DH masses to find a matching one
-
-                    if (Nhaloes < 1000) then 
-                       ! if this redhist slice as a few DHs, I don't bin them in mass
-                       istart_i=0
-                       iend_i=Nhaloes
-
-                    else
-                       ! if this redhist slice as a few DHs, I bin them in mass to speed-up the mass matching
-
-                       do iii=1,Nmbins   ! determine in which bin mass the galaxy falls
-                          if ((mgal >=minm(iii)) .and. (mgal <maxm(iii))) then
-                             istart=maxval((/(iii-1)*nsample_binned,1/))
-                             iend=minval((/iii*nsample_binned,Nhaloes/))
-                             istart_i=istart(1)
-                             iend_i=iend(1)
-                          endif
-                       enddo
-
-                    endif
-
-                    ! assign the galaxy to the closest halo mass in the mass bin
-                    fom_old=abs(mgal-cone(istart_i,1)) !initialise distance betweem model mass and halo mass
-                    p_i=istart_i+1
-
-                    do iii=istart_i+1,iend_i
-                       fom=abs(mgal-cone(iii,1))
-
-                       if (fom<fom_old) then
-                          fom_old=fom
-                          p_i=iii
-                       endif
-                    enddo
-                    ! once galaxy is associeted to halo give it the redshift and the coordinates of the halo.
-                    dm_best=cone(p_i,1)
-                    if (dm_best /=flagvalue) then 
-                       latitudes(i)=cone(p_i,3)
-                       longitudes(i)=cone(p_i,4)
-                       z_gals(i)=cone(p_i,2)
-                       cone(p_i,:)=flagvalue
-                    endif
-                 endif
-              enddo
-
-              print*,'clustering ends'
-
-
-           endif ! end clustering 
-
+   
            ! Convert intrinsic size to projected angular size
            ! taking into account view angle and redshift
            do i=1,Nsample
@@ -1233,27 +1074,45 @@ program sampler
            print*,minval(latitudes),maxval(latitudes)
            print*,minval(longitudes),maxval(longitudes)
 
+!stop
            !preparing to output the data in catalogue format
-           allocate(catout(Ncat_agn,Nsample),stat=iostat)
-           if (iostat/=0) then
-              print*,'sampler: allocation error'
-              stop
-           endif
+           jstart=Nsample_old+1
+           if (.not. allocated(catout)) then
+              !start filling the output catalogue array
 
-           catout(1,:)=samplex(1:Nsample)        !lum_1.4 GHz
-           catout(2:nfreq_out+1,:)=radioflux(4:Nfreq,:)  ! total intensity
-           catout(nfreq_out+2:2*nfreq_out+1,:)=polaflux(4:Nfreq,:)  !polarization
-           catout(2*nfreq_out+2,:)=darkmass      ! mass
-           catout(2*nfreq_out+3,:)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
-           catout(2*nfreq_out+4,:)=longitudes
-           catout(2*nfreq_out+5,:)=0. ! spherical coordinates - to be filled by wrapper
-           catout(2*nfreq_out+6,:)=0. 
-           catout(2*nfreq_out+7,:)=z_gals       ! redshift
-           catout(2*nfreq_out+8,:)=sizes_3d     !intrinsic size
-           catout(2*nfreq_out+9,:)=angles       !view angle
-           catout(2*nfreq_out+10,:)=sizes       ! projected angular size
-           catout(2*nfreq_out+11,:)=spot_dist   ! distance between bright spots (Rs)
-           catout(2*nfreq_out+12,:)=ii+3        ! flag to identify population
+             allocate(catout(Ncat_agn,Nsample),stat=iostat)
+              if (iostat/=0) then
+                 print*,'sampler: allocation error'
+                 stop
+              endif
+           else
+              !copy the old part of the output catalogue and add the new part
+
+             allocate(catout_copy(Ncat_agn,Nsample_old))
+
+!              print*,size(catout),Nsample_old
+              catout_copy=catout
+              deallocate(catout)
+              allocate(catout(Ncat_agn,Nsample_old+Nsample))
+              catout(:,1:Nsample_old)=catout_copy
+              deallocate(catout_copy)
+ 
+
+          endif
+           catout(1,jstart:jstart+Nsample-1)=samplex(1:Nsample)        !lum_1.4 GHz
+           catout(2:nfreq_out+1,jstart:jstart+Nsample-1)=radioflux(4:Nfreq,:)  ! total intensity
+           catout(nfreq_out+2:2*nfreq_out+1,jstart:jstart+Nsample-1)=polaflux(4:Nfreq,:)  !polarization
+           catout(2*nfreq_out+2,jstart:jstart+Nsample-1)=darkmass      ! mass
+           catout(2*nfreq_out+3,jstart:jstart+Nsample-1)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
+           catout(2*nfreq_out+4,jstart:jstart+Nsample-1)=longitudes
+           catout(2*nfreq_out+5,jstart:jstart+Nsample-1)=0. ! spherical coordinates - to be filled by wrapper
+           catout(2*nfreq_out+6,jstart:jstart+Nsample-1)=0. 
+           catout(2*nfreq_out+7,jstart:jstart+Nsample-1)=z_gals       ! redshift
+           catout(2*nfreq_out+8,jstart:jstart+Nsample-1)=sizes_3d     !intrinsic size
+           catout(2*nfreq_out+9,jstart:jstart+Nsample-1)=angles       !view angle
+           catout(2*nfreq_out+10,jstart:jstart+Nsample-1)=sizes       ! projected angular size
+           catout(2*nfreq_out+11,jstart:jstart+Nsample-1)=spot_dist   ! distance between bright spots (Rs)
+           catout(2*nfreq_out+12,jstart:jstart+Nsample-1)=ii+3        ! flag to identify population
 
 
            ! compute intrinsic luminosities and store them in the catalogue if requested
@@ -1265,34 +1124,59 @@ program sampler
                  lums_save(:,i)=log10(radioflux(:,i)/conv_flux)
               enddo
 
-              catout(2*nfreq_out+13:3*nfreq_out+12,:)=lums_save(4:Nfreq,:)
+              catout(2*nfreq_out+13:3*nfreq_out+12,jstart:jstart+Nsample-1)=lums_save(4:Nfreq,:)
               deallocate(lums_save)
 
            endif
 
+           Nsample_old=Nsample_old+Nsample ! size of the catalogue filled so far
+           !this is to 
 
-           write(output,"(i5)")t
+!!$           write(output,"(i5)")t
+!!$           output=ADJUSTL(output)
+!!$           l=LEN_TRIM(output)
+!!$
+!!$           ! writing catalogue
+!!$           cat_filename=outdir(1:l_outdir)//'/catalogue_z'//zstr//'_'//trim(names(ii))//'.fits'
+!!$
+!!$           call write_catalogue(cat_filename,catout,Ncat_agn,tagnames)
+
+           !free memory
+           deallocate(radioflux,polaflux,samplex,darkmass,latitudes,&
+                &longitudes,z_gals,sizes,sizes_3d,angles,spot_dist,stat=iostat)
+           if (iostat/=0) then
+              print*,'sampler: deallocation error'
+              stop
+           endif
+!!$
+!!$           print*,'done'
+400        continue
+
+        enddo
+
+        if (Nsample_old /=0) then 
+        write(output,"(i5)")t
            output=ADJUSTL(output)
            l=LEN_TRIM(output)
 
            ! writing catalogue
-           cat_filename=outdir(1:l_outdir)//'/catalogue_z'//zstr//'_'//trim(names(ii))//'.fits'
+           cat_filename=outdir(1:l_outdir)//'/catalogue_AGN_z'//zstr//'.fits'
 
            call write_catalogue(cat_filename,catout,Ncat_agn,tagnames)
            !free memory
-           deallocate(catout,radioflux,polaflux,samplex,darkmass,latitudes,&
-                &longitudes,z_gals,sizes,sizes_3d,angles,spot_dist,stat=iostat)
+           deallocate(catout,stat=iostat)
            if (iostat/=0) then
               print*,'sampler: deallocation error'
               stop
            endif
 
            print*,'done'
-400        continue
 
-        enddo
+        endif
+
+
         deallocate(masses_lerg,masses_herg,lerg_p,herg_p)
-        if (do_clustering==1) deallocate(cone)
+       
      endif
 
 
@@ -1423,7 +1307,7 @@ program sampler
 
      z=redshifts(zi)
 
-     if ((z_min <= z) .and. (z_max > z)) then    ! redshift slice with center z is processed
+     if ((z_min <= z) .and. (z_max >= z)) then    ! redshift slice with center z is processed
 
         !getting the size of the redshift slice
         select case (zi)
@@ -1454,7 +1338,7 @@ program sampler
 
         volumetot=4.*pi/3.*(r(zhigh)**3-r(zlow)**3)
         volume=volumetot*skyfrac  !volume corresponding to FoV
-
+        print*,'volume=',volume
         !relation between L14 and mass of dark halo, from abundance matching
         ! reading from a file
         SFR2Mh_filename='../../TRECS_Inputs/AbundanceMatch/results_LSFR/L2mh_z'//zstr//'.txt' 
@@ -1470,96 +1354,7 @@ program sampler
         deallocate(data)
         minmass_cone=9.2 ! this is the minimum halo mass in the lightcone
 
-        ! input lightcone data for the clustering model 
-        if (do_clustering==1) then 
-
-           ! reading data for the lightcone redhsift slice 
-           cone_filename='../../TRECS_Inputs/cones/cone_5X5_z'//zstr//'.txt_sort' 
-           Ncolumns=4
-
-           nrows=rows_number(cone_filename,1,nskip)
-           Nhaloes=nrows
-
-           if (nrows ==0) then 
-              print*,'no file found!'
-              stop
-           endif
-
-           allocate(cone(nrows,ncolumns))
-           call read_columns_s(cone_filename,2,nrows,Ncolumns,nskip,cone)
-           ! reading done
-
-
-           !check that cone is big enough for the specified FoV
-           if ((minval(cone(:,3)) >  -0.95*sim_side/2.) .or.  (maxval(cone(:,3)) <0.95*sim_side/2.  ) &
-                &.or. (minval(cone(:,4)) >  -0.95*sim_side/2.) .or.  (maxval(cone(:,4)) <0.95*sim_side/2.)) then 
-              print*,'Error: cone size too small!'
-              print*,cone_filename
-              stop
-           endif
-
-           ! if cone is bigger than the FoV resize it by selectinv a catout from the centre
-           if ((minval(cone(:,3)) <  -1.*sim_side/2.) .or.  (maxval(cone(:,3)) >sim_side/2.  ) .or. &
-                &(minval(cone(:,4)) <  -1.*sim_side/2.) .or.  (maxval(cone(:,4)) >sim_side/2.)) then
-
-              print*,'resizing the cone to size',sim_side
-
-              !copy cone to old cone
-              nrows_old=nrows
-
-              allocate(cone_old(nrows_old,ncolumns))
-              cone_old=cone
-              deallocate(cone)
-
-
-              ! count number of objects for the new cone
-              nrows=0
-              do i=1,nrows_old
-                 if ((abs(cone_old(i,3)) <= sim_side/2.) .and. (abs(cone_old(i,4)) <= sim_side/2.)) nrows=nrows+1
-              enddo
-              Nhaloes=nrows
-              print*,'new number of haloes',nrows
-
-              allocate(cone(nrows,ncolumns))
-              ii=0
-              do i=1,nrows_old
-                 if ((abs(cone_old(i,3)) <= sim_side/2.) .and. (abs(cone_old(i,4)) <= sim_side/2.)) then
-                    ii=ii+1
-                    cone(ii,:)=cone_old(i,:)
-                 endif
-
-              enddo
-
-              deallocate(cone_old)
-           endif ! end resizing cone if too big
-
-           print*,'************'
-           print*,'cone masses',minval(cone(:,1)),maxval(cone(:,1))
-           print*,'cone redshifts',minval(cone(:,2)),maxval(cone(:,2))
-           print*,'cone lats',minval(cone(:,3)),maxval(cone(:,3))
-           print*,'cone lons',minval(cone(:,4)),maxval(cone(:,4))
-           print*,'************'
-
-           !binning cone in mass to speed-up mass matching 
-           ncone_binned=real(Nhaloes)/real(Nmbins)
-           nsample_binned=int(ncone_binned)+1
-
-           !           print*,'rounding',ncone_binned,nsample_binned
-
-           do i=1,Nmbins 
-              istart=maxval((/(i-1)*nsample_binned,1/))
-              iend=minval((/i*nsample_binned,Nhaloes/))
-              istart_i=istart(1)
-              iend_i=iend(1)
-              minm(i)=cone(istart_i,1)
-              maxm(i)=cone(iend_i,1)
-              if (iend_i > Nhaloes) goto 111
-           enddo
-
-111        continue
-
-        endif ! end input lightcone file for the clustering model
-
+    
 
         !Reading SFR rate functins, from Mancuso et al. 
         SFR_filename='../../TRECS_Inputs/SFRF/SFRF_z'//zstr//'.dat'  
@@ -1584,14 +1379,13 @@ program sampler
 
 
 
-
+        Nsample_old=0
         do ii=1,3 !loop on SFR populations  
            ! information for limiting ram usage
            ! processing long files in chuncks of lenght buffer_size
            buffer_size=1000
            buffer_free=buffer_size
            jbuf=0 ! index to fill buffer 
-
            !print*,'beginning loop'
            px=(10.**data(:,ii+2)) !phi(logSFR)
 
@@ -1846,127 +1640,7 @@ program sampler
            Nsample_mass=sum(satellite_flag)
            print*,'number of satellite galaxies',Nsample_mass
 
-           if (do_clustering==1) then ! clustering model
-              print*,'clustering starts'
-
-              minmass=minval(Darkmass)
-              print*,'number of haloes',Nhaloes
-              print*,'number of galaxies',Nsample
-
-
-
-              do i=1,Nsample
-                 mgal=darkmass(i)
-
-                 ! mass matching if the galaxy's mass is in the range of masses of the lighcone
-                 ! galaxies outside this range have been assigned random positions already
-                 ! galaxies that are successfully matched to a halo will be associated the same position of the halo
-                 if ((mgal >=minm(1)) .and. (mgal<=maxm(Nmbins))) then 
-
-                    ! two possible implementations of the association of dark haloes to SFGs
-                    ! case(0): galaxy always associated to the closest halo mass, first come first served
-                    ! this means some galaxies end up being associated with halo masses quite different
-                    ! case(1): galaxy associated to halo mass no more distant than dmtol
-                    ! this is more consistent for all galaxies, but typically gets galaxies associated with smaller halo masses, due to the shape of the mass function
-                    ! mass_scatter parameter controlling this is defined in valiable declaration and set to 1. 
-                    ! change it to 0 to use the alternative implementation
-
-                    dmtol=2.
-
-                    select case(mass_scatter) 
-                    case(0)
-                       !first mass association implementation
-                       ! if the redshift slice contains a few haloes, no binning in mass is necessary
-                       if (Nhaloes < 1000) then 
-                          ! no mass binning for a few haloes
-                          istart_i=0
-                          iend_i=Nhaloes
-
-                       else
-                          ! for big redshift slices, use mass bins to speed-up associating the galaxy to a halo of similar mass
-
-                          do iii=1,Nmbins   ! determine in which bin mass the galaxy falls
-                             if ((mgal >=minm(iii)) .and. (mgal <maxm(iii))) then
-                                istart=maxval((/(iii-1)*nsample_binned,1/))
-                                iend=minval((/iii*nsample_binned,Nhaloes/))
-                                istart_i=istart(1)
-                                iend_i=iend(1)
-
-                             endif
-                          enddo
-                       endif
-
-
-!!$                    ! assign the galaxy to the closest halo mass in the mass bin
-                       fom_old=abs(mgal-cone(istart_i,1)) !initialise distance betweem model mass and halo mass
-                       ! associate galaxy to the closest available mass
-                       p_i=istart_i+1
-                       do iii=istart_i+1,iend_i
-                          fom=abs(mgal-cone(iii,1))
-                          if (fom<fom_old) then
-                             fom_old=fom
-                             p_i=iii
-                          endif
-                       enddo
-
-                       dm_best=cone(p_i,1)
-                       if (dm_best /=flagvalue) then 
-                          latitudes(i)=cone(p_i,3)
-                          longitudes(i)=cone(p_i,4)
-                          z_gals(i)=cone(p_i,2)
-                          cone(p_i,:)=flagvalue
-                       endif
-
-
-                    case(1)
-                       ! second mass association implementation
-
-                       ! allow some scatter between halo mass and galaxy mass
-
-                       istart_i=0   ! no mass binning, considering the whole cone
-                       iend_i=Nhaloes
-                       fom=1.e20    ! variable initialization
-                       count=0.
-                       if (maxval(cone(:,1)) > flagvalue) then  ! this means not all haloes are used 
-
-                          do while (fom > dmtol)
-                             try=int(ran_mwc(iseed)*(iend_i-istart_i-1)+istart_i+1)
-
-                             if ((try >= istart_i+1) .and. (try <=iend_i )) then
-                                fom=abs(mgal-cone(try,1))
-                                count=count+1 
-                             endif
-
-                             if (count > Nhaloes) goto 888 
-                             ! abort mass association if a suitable halo is not found
-                             ! in this case random coordinates have been already assigned
-                          enddo
-                       endif
-
-                       p_i=try
-                       dm_best=cone(p_i,1)
-
-                       if ((fom<=dmtol) .and. (dm_best /=flagvalue)) then 
-
-                          latitudes(i)=cone(p_i,3)
-                          longitudes(i)=cone(p_i,4)
-                          z_gals(i)=cone(p_i,2)
-                          cone(p_i,:)=flagvalue
-
-                       endif
-888                    continue
-
-
-
-                    end select
-                 endif
-              enddo
-
-              print*,'clustering ends'
-
-
-           endif ! end clustering 
-
+          
 
            deallocate(satellite_flag,darkmass_halo)
 
@@ -2014,45 +1688,56 @@ program sampler
            enddo
            ! end ellipticities
 
-           !writing the catalogue
-           allocate(catout(Ncat_sfr,Nsample))
 
+    !preparing to output the data in catalogue format
+              jstart=Nsample_old+1
+              if (.not. allocated(catout)) then
+              !start filling the output catalogue array
+                 allocate(catout(Ncat_sfr,Nsample),stat=iostat)
+              if (iostat/=0) then
+                 print*,'sampler: allocation error'
+                 stop
+              endif
+           else
+              !copy the old part of the output catalogue and add the new part
+              allocate(catout_copy(Ncat_sfr,Nsample_old))
+              catout_copy=catout
+              deallocate(catout)
+              allocate(catout(Ncat_sfr,Nsample_old+Nsample))
+              catout(:,1:Nsample_old)=catout_copy
+              deallocate(catout_copy)
+           endif
+           catout(1,jstart:jstart+Nsample-1)=samplex(1:Nsample)        !lum_1.4 GHz
+           catout(2:nfreq_out+1,jstart:jstart+Nsample-1)=radioflux(4:Nfreq,:)  ! total intensity
+           catout(nfreq_out+2:2*nfreq_out+1,jstart:jstart+Nsample-1)=polaflux(4:Nfreq,:)  !polarization
+           catout(2*nfreq_out+2,jstart:jstart+Nsample-1)=darkmass      ! mass
+           catout(2*nfreq_out+3,jstart:jstart+Nsample-1)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
+           catout(2*nfreq_out+4,jstart:jstart+Nsample-1)=longitudes
+           catout(2*nfreq_out+5,jstart:jstart+Nsample-1)=0. ! spherical coordinates - to be filled by wrapper
+           catout(2*nfreq_out+6,jstart:jstart+Nsample-1)=0. 
 
-           !saving the fields to catalogue columns
-           catout(1,:)=samplex(1:Nsample)
-           catout(2:nfreq_out+1,:)=radioflux(4:Nfreq,:)
-           catout(nfreq_out+2:2*nfreq_out+1,:)=polaflux(4:Nfreq,:)
-           catout(2*nfreq_out+2,:)=darkmass
-           catout(2*nfreq_out+3,:)=latitudes
-           catout(2*nfreq_out+4,:)=longitudes
-           catout(2*nfreq_out+5,:)=latitudes*0.
-           catout(2*nfreq_out+6,:)=longitudes*0.
-           catout(2*nfreq_out+7,:)=z_gals
-           catout(2*nfreq_out+8,:)=sizes  
-           catout(2*nfreq_out+9,:)=ellipticity1  
-           catout(2*nfreq_out+10,:)=ellipticity2  
-           catout(2*nfreq_out+11,:)=ii !SGSs
+           catout(2*nfreq_out+7,jstart:jstart+Nsample-1)=z_gals
+           catout(2*nfreq_out+8,jstart:jstart+Nsample-1)=sizes  
+           catout(2*nfreq_out+9,jstart:jstart+Nsample-1)=ellipticity1  
+           catout(2*nfreq_out+10,jstart:jstart+Nsample-1)=ellipticity2  
+           catout(2*nfreq_out+11,jstart:jstart+Nsample-1)=ii !SGSs
+
+           ! compute intrinsic luminosities and store them in the catalogue if requested
            if (save_lums ==1) then
               allocate(lums_save(Nfreq,Nsample))
-
               do i=1,Nsample
                  zlum=z_gals(i)
-                 conv_flux=1./(4.*pi*(lumr(zlum)*Mpc)**2)*1.e26*(1+zlum) !L [erg/s/Hz] ->S [mJy] 
+                 conv_flux=1./(4.*pi*(lumr(zlum)*Mpc)**2)*1.e26*(1+zlum) !L [erg/s/Hz] ->S [mJy]
                  lums_save(:,i)=log10(radioflux(:,i)/conv_flux)
               enddo
-              catout(2*nfreq_out+12:3*nfreq_out+11,:)=lums_save(4:Nfreq,:)
+              catout(2*nfreq_out+12:3*nfreq_out+11,jstart:jstart+Nsample-1)=lums_save(4:Nfreq,:)
               deallocate(lums_save)
 
            endif
-           ! end saving fields to catalogue columns
 
-           ! wrinting catalogue to disk
-           cat_filename=outdir(1:l_outdir)//'/catalogue_z'//zstr//'_'//trim(names(ii))//'.fits'
+           Nsample_old=Nsample_old+Nsample ! size of the catalogue filled so far
 
-           call write_catalogue(cat_filename,catout,Ncat_sfr,tagnames)
-           ! catalogue written
-           print*,'done'
-           deallocate(catout,radioflux,polaflux,inclinations,samplex,darkmass,&
+           deallocate(radioflux,polaflux,inclinations,samplex,darkmass,&
                 &latitudes,longitudes,z_gals,sizes,lums,ellipticity1,ellipticity2,stat=iostat)
            if (iostat/=0) then
               print*,'sampler: deallocation error'
@@ -2060,12 +1745,18 @@ program sampler
            endif
 500        continue
         enddo ! loop on SFR populations
+        if (Nsample_old /=0) then 
+           ! wrinting catalogue to disk
+           cat_filename=outdir(1:l_outdir)//'/catalogue_SFG_z'//zstr//'.fits'
 
+           call write_catalogue(cat_filename,catout,Ncat_sfr,tagnames)
+           ! catalogue written
+           print*,'done'
+           deallocate(catout)
+        endif
         deallocate(x,px,data)
         deallocate(masses_L14,l14)
-        if (do_clustering==1) deallocate(cone)
-        !stop
-
+       
      endif
 
   enddo !loop on redshifts

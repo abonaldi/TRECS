@@ -18,7 +18,7 @@ program wrapper
   USE utilities
   USE pix_tools
   USE random_tools,only: ran_mwc,randgauss_boxmuller
-  use sampler_io, ONLY: rows_catalogue, read_catalogue
+  use sampler_io, ONLY: rows_catalogue, read_catalogue, columns_catalogue
   USE paramfile_io, ONLY : paramfile_handle, parse_init, parse_int, &
        parse_string, parse_double, parse_lgt, concatnl
   USE extension, ONLY : getEnvironment, getArgument, nArguments
@@ -103,18 +103,17 @@ program wrapper
        & " Do you want to simulate clustering (only for a max size=5, 0=no, 1=yes)?")
   do_clustering = parse_int(handle, 'do_clustering', default=0, vmax=1, descr=description)
 
-  handle = parse_init(paramfile)
-  description = concatnl( &
-       & " Enter number of columns in files ")
-  Ncols = parse_int(handle, 'Ncols', default=5, vmin=1, descr=description)
+!!$  handle = parse_init(paramfile)
+!!$  description = concatnl( &
+!!$       & " Enter number of columns in files ")
+!!$  Ncols = parse_int(handle, 'Ncols', default=5, vmin=1, descr=description)
 
-  allocate(catfiles(Nfiles),tagnames(Ncols),tunit(Ncols),tform(Ncols),stat=iostat)
+  allocate(catfiles(Nfiles))
+
   if (iostat /=0) then
      print*,'Error allocating filenames'
      stop
   endif
-  tunit(:)=''
-  tform(:)='1E'
 
 
   do i=1,NFiles
@@ -134,7 +133,15 @@ program wrapper
   outcat=parse_string(handle,'outcat', default='', descr=description)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  call columns_catalogue(catfiles(1),Ncols,status)
+  
+  if (status ==0) then 
+     print*,'number of columns in file',Ncols
+  endif
 
+  allocate(tagnames(Ncols),tunit(Ncols),tform(Ncols),stat=iostat)
+  tunit(:)=''
+  tform(:)='1E'
 
   ! generate position vector for the chosen central coordinate
   thetam=lat_target*pi/180.d0 !in radians

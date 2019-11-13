@@ -13,7 +13,8 @@ INCLUDE := $(I_HEALPIX)  $(I_CFITSIO) $(I_SAMPLER)
 LINK := $(LINK) $(L_HEALPIX) $(L_CFITSIO) $(LDFLAGS) 
 
 
-OBJ := ../sampler/sampler_io.o  ../sampler/random_modules.o ../sampler/sampler_modules.o wrapper.o  
+#OBJ := ../sampler/sampler_io.o  ../sampler/random_modules.o ../sampler/sampler_modules.o wrapper.o  
+OBJ := ../modules/sampler_io.o  ../modules/random_modules.o ../modules/sampler_modules.o wrapper.o  
 
 
 default: all

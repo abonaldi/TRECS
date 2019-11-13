@@ -253,13 +253,13 @@ end module interpolations
 
 module random_tools
 
-use healpix_types
-use interpolations
-use random
+  use healpix_types
+  use interpolations
+  use random
 
 contains
 
-  
+
 
   !=======================================================================
   function randgauss_boxmuller(iseed)
@@ -291,13 +291,13 @@ contains
   end function randgauss_boxmuller
 
 
- !=======================================================================
+  !=======================================================================
   function rms(vector)
-   
+
     real(SP),intent(in):: vector(:)
     real(SP)::rms,avg
     integer(I4B)::n,i
-  
+
     n=size(vector)
 
     avg=0.
@@ -361,7 +361,7 @@ contains
     !extract poisson samples from a distribution with the constraint of the total number of objects 
     implicit none
     real(sp)::sample(:),mu,norm,xmin_prior,xmax_prior,sg
-!    real(sp)::x_m(1),x_w1(1),x_w2(1),halfmax(1),sg1(1),sg2(1)
+    !    real(sp)::x_m(1),x_w1(1),x_w2(1),halfmax(1),sg1(1),sg2(1)
     real(dp)::px(:),x(:),dx,xmin,xmax,peakval
     integer::i,N,j,iii,p(1),iseed,Nran,test,jjj
     integer*8::Nsample,Ngen,iostat,p_m(1)
@@ -374,13 +374,13 @@ contains
     dx=abs(x(2)-x(1))
     sg=dx/3. ! scatter for the additional samples
     N=size(x)
-    
+
     norm=real(Nsample)/sum(px) 
-    
 
-!print*,Nsample,norm
 
-!poisson sampling the original distribution. the number of objects could be larger or smaller than the number required
+    !print*,Nsample,norm
+
+    !poisson sampling the original distribution. the number of objects could be larger or smaller than the number required
     iii=1
     j=1 ! position of peack distribution
     peakval=0.d0
@@ -439,7 +439,7 @@ contains
 
     ndata=size(data)
     if (nbins==-1) then
-!determine bin size
+       !determine bin size
        avg=sum(data)/dble(ndata)
 
        test=0.
@@ -482,7 +482,229 @@ contains
   end subroutine histogram
 
 
-  end module random_tools
+!!$  subroutine get_bins_old(data,nbins_final,binmins,binmaxs)
+!!$    ! compute bin limits to have similar number of elements in each bin
+!!$    implicit none
+!!$    real(sp)::data(:)
+!!$    real(sp),allocatable::binmaxs(:),binmins(:),binminmax_copy(:)
+!!$    real(dp),allocatable::histo(:,:)
+!!$    real(dp)::cumul,binsize
+!!$    integer::i,nbins,nbins_target,nbins_final,nsample_target(1),ii,nrows
+!!$
+!!$
+!!$    nrows=size(data)
+!!$    nbins=-1
+!!$
+!!$    call histogram(dble(data),nbins,binsize,histo) !
+!!$    nbins=nbins*10.
+!!$    binsize=binsize/10.
+!!$    allocate(histo(nbins,2))
+!!$    histo(:,:)=0
+!!$    print*,nbins,binsize
+!!$    call histogram(dble(data),nbins,binsize,histo) !
+!!$    print*,'done'
+!!$    nsample_target=maxval(histo(:,2))
+!!$    !print*,'nsample target=',nsample_target
+!!$    nbins_target=int(nrows/nsample_target(1))+1
+!!$
+!!$    if (allocated(binmaxs)) deallocate(binmaxs)
+!!$    if (allocated(binmins)) deallocate(binmins)
+!!$    if (allocated(binminmax_copy)) deallocate(binminmax_copy)
+!!$ 
+!!$!print*,'nbins_target=',nbins_target
+!!$
+!!$   allocate(binmaxs(nbins_target),binmins(nbins_target),binminmax_copy(nbins_target))
+!!$    binmins(:)=-1.
+!!$    binmaxs(:)=-1.
+!!$
+!!$    ii=1
+!!$    cumul=0.
+!!$    binmins(1)=minval(data)
+!!$    do i=1,nbins ! bins of the original histogram
+!!$       cumul=cumul+histo(i,2) ! cumulative number of object in the histogram
+!!$       if (cumul >= nsample_target(1)) then
+!!$          binmaxs(ii)=histo(i,1)
+!!$          binmins(ii+1)=histo(i,1)
+!!$          !print*,binmins(ii),binmaxs(ii),cumul
+!!$          ii=ii+1
+!!$          cumul=0.
+!!$          GOTO 100
+!!$       endif
+!!$100    continue
+!!$    enddo
+!!$    binmaxs(ii-1)=maxval(data)
+!!$    print*,'ok1'
+!!$    ! trim binmaxs,binmins
+!!$
+!!$    nbins_final=0
+!!$    do i=1,nbins_target
+!!$       if (binmaxs(i) /=-1) nbins_final=nbins_final+1
+!!$    enddo
+!!$
+!!$    print*,'ok2',nbins_target,nbins_final
+!!$
+!!$    if (nbins_final < nbins_target) then
+!!$       binminmax_copy(:)=binmins
+!!$       deallocate(binmins)
+!!$       allocate(binmins(nbins_final))
+!!$       binmins=binminmax_copy(1:nbins_final)
+!!$       binminmax_copy=binmaxs
+!!$       deallocate(binmaxs)
+!!$       allocate(binmaxs(nbins_final))
+!!$       binmaxs=binminmax_copy(1:nbins_final)
+!!$       deallocate(binminmax_copy)
+!!$    endif
+!!$
+!!$print*,binmins
+!!$print*,binmaxs
+!!$print*,nbins_final
+!!$
+!!$!stop
+!!$  end subroutine get_bins_old
+
+
+
+ subroutine get_bins(data,nbins,binmins,binmaxs)
+    ! compute bin limits to have similar number of elements in each bin
+    implicit none
+    real(sp)::data(:),binmaxs(:),binmins(:)
+    real(dp)::binsize
+    integer::i,nbins,nrows
+
+
+    nrows=size(data)
+  
+    binmins(:)=-1.
+    binmaxs(:)=-1.
+    binsize=(maxval(data)-minval(data))/nbins
+
+    binmins(1)=minval(data)
+    binmaxs(1)=binmins(1)+binsize
+    do i=2,nbins  
+       binmins(i)=binmins(i-1)+binsize
+       binmaxs(i)=binmaxs(i-1)+binsize
+    enddo
+
+  end subroutine get_bins
+
+
+  subroutine assign_bins(data,flags,binmins,binmaxs,nrows,nbins,data_indices,populations)
+    ! compute bin limits to have similar number of elements in each bin
+    implicit none
+    real(sp)::data(:)
+    real(sp)::binmaxs(:),binmins(:)
+    integer::data_indices(:),i,nbins,nrows,j,populations(:),flags(:)
+
+    data_indices(:)=-100
+    populations(:)=0
+
+    do i=1,nrows
+
+       do j=1,nbins
+          if ((data(i) >= binmins(j)) .and. (data(i) < binmaxs(j)).and. (flags(i)==0)) then
+             data_indices(i)=j
+             populations(j)=populations(j)+1
+          endif
+       enddo
+
+    enddo
+
+
+  end subroutine assign_bins
+
+!!$!this is the old version without the possibility to exclude sources with flagging
+!!$  subroutine assign_bins_old(data,binmins,binmaxs,nrows,nbins,data_indices,populations)
+!!$    ! compute bin limits to have similar number of elements in each bin
+!!$    implicit none
+!!$    real(sp)::data(:)
+!!$    real(sp)::binmaxs(:),binmins(:)
+!!$    integer::data_indices(:),i,nbins,nrows,j,populations(:)
+!!$
+!!$    data_indices(:)=100
+!!$    populations(:)=0
+!!$
+!!$    do i=1,nrows
+!!$       if (data(i) < binmaxs(1)) then 
+!!$          data_indices(i)=1
+!!$          populations(1)=populations(1)+1
+!!$       endif
+!!$       do j=2,nbins-1
+!!$          if ((data(i) >= binmins(j)) .and. (data(i) < binmaxs(j))) then
+!!$             data_indices(i)=j
+!!$             populations(j)=populations(j)+1
+!!$          endif
+!!$       enddo
+!!$       if (data(i) >= binmins(nbins)) then
+!!$          data_indices(i)=nbins
+!!$          populations(nbins)=populations(nbins)+1
+!!$       endif
+!!$       if (data_indices(i) ==100) then
+!!$          print*,data(i),'problema'
+!!$          stop
+!!$       endif
+!!$    enddo
+!!$
+!!$  end subroutine assign_bins_old
+!!$
+
+  subroutine extract_subsample(indices,nrows,i,subsample)
+    implicit none
+    integer::indices(:),subsample(:),i,j,nrows,ii
+
+    ii=1
+    do j=1,nrows
+       if (indices(j)==i) then 
+          subsample(ii)=j
+          ii=ii+1
+       endif
+    enddo
+
+
+  end subroutine extract_subsample
+
+
+  subroutine cross(data_big,data_small,matches,nbig,nsmall,scatter)
+    implicit none
+    integer::matches(:),nbig,nsmall
+    integer::i,j,jstart,iseed
+    real(sp)::scatter,data_big(:),data_small(:),s
+
+
+
+    ! scroll between the big catalogue starting from a random position. This will give more independent results if the correlation is repeated
+
+    jstart=int(rand()*nbig)
+    if (jstart <1) jstart=1
+
+    do i=1,nsmall
+       if (matches(i) ==-100.) then ! this object has not been matched already
+          s=abs(randgauss_boxmuller(iseed)) ! random number for the scatter
+          do j=jstart,nbig
+             if((data_big(j) /=-100.) .and. (abs(data_small(i)-data_big(j)) <= scatter*data_small(i)*s)) then
+                matches(i)=j
+                data_big(j)=-100. 
+                goto 100
+             endif
+          enddo
+
+          if (jstart >1) then 
+             do j=1,jstart-1
+                if((data_big(j) /=-100.) .and. (abs(data_small(i)-data_big(j)) <= scatter*data_small(i)*s)) then
+                   matches(i)=j
+                   data_big(j)=-100. 
+                   goto 100
+                endif
+             enddo
+          endif
+!!$print*,'ok2'
+
+100       continue
+       endif
+    enddo
+
+  end subroutine cross
+
+end module random_tools
 
 
 module trecs_mods

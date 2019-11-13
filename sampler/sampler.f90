@@ -1608,6 +1608,7 @@ program sampler
               !syn+ff with a scatter (evolution relation by Magnelli et al. )
               test=randgauss_boxmuller(iseed)  
               delta=10.0000**(log10(Lsyn+Lfree)+test*0.4000+2.3500*(1.0000 -(1.0000 +z)**(-0.1200))) 
+              
               if (minval(delta)<0.) delta(:)=0. 
               test=(delta(ilim)+Ld(ilim)*sfr)*conv_flux ! add dust SED
               if (test < fluxlim*1000.) px(iii)=0.

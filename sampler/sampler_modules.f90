@@ -545,16 +545,34 @@ end subroutine pola_SFGS
 
 
   ! functions to compute radio luminosity from SFR 
-! synchrotron emission
+  ! synchrotron emission
 subroutine Lsynch(nu,sfr,L)
     implicit none
     ! synchrotron luminosity for one galaxy at several frequencies
     real(dp),intent(out)::L(:)
     real(dp),intent(in)::nu(:),sfr
     real(dp),parameter::normstar=1.68e28,norm=1.9e28,beta=3
+    integer::nfreq,i
+    real(sp)::alpha
+    !L=(nu/1000.)**(-0.85)*(1.+(nu/20000.)**0.5)**(-1.) !common part in L and Lstar
 
-    L=(nu/1000.)**(-0.85)*(1.+(nu/20000.)**0.5)**(-1.) !common part in L and Lstar
+!ANNA test
+!correction to spectral index below 600 MHz for self-absorption
+!alphacorr=0.05*(610./nu)^0.5
+    nfreq=size(nu)
+    do i=1,nfreq
+       alpha=-0.85
+!       if (nu(i)<1400.) alpha=-0.57 ! Chyzy et al. 2018
+       if (nu(i)<1400.) alpha=-0.4 ! Chyzy et al. 2018
+       L(i)=(nu(i)/1000.)**(alpha)*(1.+(nu(i)/20000.)**0.5)**(-1.) !common part in L and Lstar
+       !print*,nu(i),L(i)
+    enddo
+       !ANNA test
 
+
+
+!stop
+!L=(nu/1000.)**(-0.85+0.4*(610./nu)**0.5)*(1.+(nu/20000.)**0.5)**(-1.) !common part in L and Lstar
     L=L*normstar/((normstar/norm/sfr)**beta+(normstar/norm/sfr))  ! erg/s/Hz
 
   end subroutine Lsynch
@@ -587,7 +605,7 @@ subroutine Lsynch(nu,sfr,L)
 
 
     norm=2.6 !early type 
-    if (ii == 1) norm=3. !late year
+    if (ii == 1) norm=3. !late type
 
     L_ir_simul=norm!*sfr
 
@@ -618,7 +636,7 @@ subroutine Lsynch(nu,sfr,L)
 
     !    Radioflux_i(:)=(Radioflux_i(i14)*(frequencies/1400.)**alpha_low) !orig
 
-    ! test 6/9/19: I use the effective indev only for v>1400
+    ! test 6/9/19: I use the effective index only for v>1400
     alphascat=alpha+alphascat ! Bonato mean indices 
 
 

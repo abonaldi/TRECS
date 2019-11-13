@@ -10,8 +10,56 @@ module sampler_io
        parse_string, parse_double, parse_lgt, concatnl
 contains
 
+  subroutine columns_catalogue(filename,Ncol,status)
+    !enquire length of catalogue file 
+    !C     read and print data values from an ASCII or binary table
+    implicit none
+    integer status,unit,readwrite,blocksize,hdutype,ntable
+    integer nfound,irow,i,Ncol
+    character filename*200,nullstr*1,name*8
+    logical anynull
+    character*80 test,comment
+    character*16 ttype(Ncol),tform(Ncol),tunit(Ncol)
+1   status=0
 
- subroutine rows_catalogue(filename,Ncol,irow,tags,units)
+    !C     Get an unused Logical Unit Number to use to open the FITS file
+2   call ftgiou(unit,status)
+    !C     open the FITS file previously created by WRITEIMAGE
+
+
+    readwrite=0
+3   call ftopen(unit,filename,readwrite,blocksize,status)
+    if (status /= 0) then
+       ! handle the case for the file not existing 
+       irow=0
+       print*,'file does not exist '//filename
+       goto 100
+    endif
+
+
+    !C         read the TTYPEn keywords, which give the names of the columns
+
+
+6   call ftgkns(unit,'TTYPE',1,Ncol,ttype,nfound,status)
+    call ftgkns(unit,'TUNIT',1,Ncol,tunit,nfound,status)
+    if (nfound==0) then 
+       call ftmrhd(unit,1,hdutype,status) ! go to the next extension
+       call ftgkns(unit,'TTYPE',1,Ncol,ttype,nfound,status)
+       call ftgkns(unit,'TUNIT',1,Ncol,tunit,nfound,status)
+    endif
+
+    call FTGKEY(unit,'TFIELDS', test,comment,status)
+
+
+    read(test,*)  ncol
+
+
+
+100 continue
+  end subroutine columns_catalogue
+
+
+  subroutine rows_catalogue(filename,Ncol,irow,tags,units)
     !enquire length of catalogue file 
     !C     read and print data values from an ASCII or binary table
 
@@ -19,31 +67,39 @@ contains
     integer felem,nelems,nullj,diameter,nfound,irow,colnum
     real nulle,density
     character filename*200,nullstr*1,name*8
-    character*16 ttype(Ncol),tform(Ncol),tunit(Ncol),tags(:),units(:)
+    character*16 ttype(Ncol),tform(Ncol),tunit(Ncol),tags(:),units(:),tfields(1)
     logical anynull
+    character*72 comment
+    character*80 record
 
 
 1   status=0
 
     !C     Get an unused Logical Unit Number to use to open the FITS file
 2   call ftgiou(unit,status)
-
     !C     open the FITS file previously created by WRITEIMAGE
+
+
     readwrite=0
 3   call ftopen(unit,filename,readwrite,blocksize,status)
+    if (status /= 0) then
+       ! handle the case for the file not existing 
+       irow=0
+       print*,'file does not exist '//filename
+       goto 100
+    endif
 
-
+!stop
 
     !C         read the TTYPEn keywords, which give the names of the columns
+
 6   call ftgkns(unit,'TTYPE',1,Ncol,ttype,nfound,status)
     call ftgkns(unit,'TUNIT',1,Ncol,tunit,nfound,status)
-
     if (nfound==0) then 
        call ftmrhd(unit,1,hdutype,status) ! go to the next extension
-       call ftgkns(unit,'TTYPE',1,Ncol,ttype,nfound,status)
+        call ftgkns(unit,'TTYPE',1,Ncol,ttype,nfound,status)
        call ftgkns(unit,'TUNIT',1,Ncol,tunit,nfound,status)
     endif
-    
 
     !C         read the data, one row at a time, and print them out
     felem=1
@@ -51,7 +107,7 @@ contains
     nullstr=' '
     nullj=0
     nulle=0.
-  
+
     status=0
     irow=1
     do while (status ==0)
@@ -72,7 +128,8 @@ contains
 11  if (status .gt. 0)call printerror(status)
     tags=ttype
     units=tunit
-!stop
+
+100 continue
   end subroutine rows_catalogue
 
 
@@ -176,11 +233,13 @@ contains
     ttype=tagnames
 
     ! set TUNIT depending on the quantity
+    i=Ncol
     do j=1,Ncol
        !if (tagnames(i) == ) tunit(i)=
        tunit(j)='mJy'
        if (tagnames(j)=='Lum1400') tunit(j)='log(erg/s/Hz)'
        if ( tagnames(j)=='Mh') tunit(j)='log(Msun)'
+       if ( tagnames(j)=='Mhi') tunit(j)='log(Msun)'
        if ( tagnames(j)=='x_coord') tunit(j)='degs'
        if  (tagnames(j)=='y_coord') tunit(j)='degs'
        if  (tagnames(j)=='latitude') tunit(j)='degs'
@@ -190,12 +249,13 @@ contains
        if  (tagnames(j)=='angle') tunit(j)='degs'
        if  (tagnames(j)=='size') tunit(j)='arcsec'
        if  (tagnames(j)=='Rs') tunit(j)='none'
-       if  (tagnames(j)=='PopFlag') tunit(j)='none'
-       if  (tagnames(j)=='PopFlag') i=j ! identify the last column if luminosities are not saved
+       if  (tagnames(j)=='RadioClass') tunit(j)='none'
+       if  (tagnames(j)=='OptClass') tunit(j)='none'
+       if  (tagnames(j)=='OptClass') i=j ! identify the last column if luminosities are not saved
 !print*,tagnames(j),tunit(j)
 !stop 
    enddo
-!    stop
+!   ! thi is not general for HI: change!!!
     if (Ncol /= i) then ! case where luminosities are also saved
        tunit(i+1:Ncol)='log(erg/s/Hz)'
     endif
