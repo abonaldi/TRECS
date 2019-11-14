@@ -38,7 +38,7 @@ program sampler
   character(LEN=filenamelen)::paramfile,description,dummy,outdir,MHI_filename,MHI2Mh_filename
   real(dp)::nu,deltanu,sfr,mn,mx,volume,integ,volumetot,fom,fom_old,z_i
   character(LEN=filenamelen)::chline,filestat,cat_filename
-  character(LEN=10),allocatable::tagnames(:)
+  character(LEN=16),allocatable::tagnames(:),tunit(:),tform(:)
   !character(LEN=10)::names(3)
   CHARACTER(LEN=5) :: output,output2,tag
   CHARACTER(LEN=10) ::output3
@@ -194,28 +194,36 @@ program sampler
 
 
   !creating tag names for the catalogue
-  allocate(tagnames(Ncat_hi))
+  allocate(tagnames(Ncat_hi),tunit(Ncat_hi),tform(Ncat_hi))
   j=1
   tagnames(j)='MHI'
+  tunit(j)='log(Msun)'
   j=j+1
   tagnames(j)='Mh'
+  tunit(j)='log(Msun)'
   j=j+1
   tagnames(j)='x_coord'
+  tunit(j)='degs'
   j=j+1
   tagnames(j)='y_coord'
+  tunit(j)='degs'
   j=j+1
   tagnames(j)='latitude'
+  tunit(j)='degs'
   j=j+1
   tagnames(j)='longitude'
+  tunit(j)='degs'
   j=j+1
   tagnames(j)='redshift'
+  tunit(j)='none'
   j=j+1
   tagnames(j)='HI size'
+  tunit(j)='arcsec'
   j=j+1
   tagnames(j)='inclination'
+  tunit(j)='degs'
 
-
-
+  tform(:)='1E'
 
   nreds=57 !SF gals until z=8 (where I have cone)
   nreds_out=nreds
@@ -556,7 +564,7 @@ print*,'qui2'
            ! wrinting catalogue to disk
            cat_filename=outdir(1:l_outdir)//'/catalogue_HI_z'//zstr//'.fits'
 
-           call write_catalogue(cat_filename,catout,Ncat_hi,tagnames)
+           call write_catalogue_new(cat_filename,catout,Ncat_hi,tagnames,tunit,tform)
            ! catalogue written
            print*,'done'
            deallocate(catout)
@@ -570,7 +578,7 @@ print*,'qui2'
   !deallocate(dustsed,dif)
   !deallocate(Lsyn,Lfree,Ld)
   !deallocate(frequencies,frequencies_rest,tagnames)
-  deallocate(tagnames)
+  deallocate(tagnames,tunit,tform)
 
   ! compute time for the run
   call date_and_time(values = values_time(:,2))

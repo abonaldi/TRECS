@@ -673,15 +673,23 @@ contains
 
     ! scroll between the big catalogue starting from a random position. This will give more independent results if the correlation is repeated
 
+
     jstart=int(rand()*nbig)
     if (jstart <1) jstart=1
 
+ !   print*,'jstart',jstart
     do i=1,nsmall
-       if (matches(i) ==-100.) then ! this object has not been matched already
+       if (matches(i) ==-100) then ! this object has not been matched already
           s=abs(randgauss_boxmuller(iseed)) ! random number for the scatter
+ !         print*,'random',s
+
           do j=jstart,nbig
+!             print*,data_small(i),data_big(j)
+             
              if((data_big(j) /=-100.) .and. (abs(data_small(i)-data_big(j)) <= scatter*data_small(i)*s)) then
+                
                 matches(i)=j
+   !             print*,data_big(matches(i)),data_small(i)
                 data_big(j)=-100. 
                 goto 100
              endif
@@ -690,8 +698,11 @@ contains
           if (jstart >1) then 
              do j=1,jstart-1
                 if((data_big(j) /=-100.) .and. (abs(data_small(i)-data_big(j)) <= scatter*data_small(i)*s)) then
+                   
                    matches(i)=j
+  !                 print*,data_big(matches(i)),data_small(i)
                    data_big(j)=-100. 
+
                    goto 100
                 endif
              enddo
@@ -702,6 +713,12 @@ contains
        endif
     enddo
 
+!!$stop
+!!$    do i=1,nsmall
+!!$       if (matches(i) /=-100) print*,data_small(i),data_big(matches(i))
+!!$    enddo
+!!$
+!!$stop
   end subroutine cross
 
 end module random_tools

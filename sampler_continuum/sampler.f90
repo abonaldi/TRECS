@@ -44,7 +44,7 @@ program sampler
   character(LEN=filenamelen)::filename7,filename8,filename9,filename10
   character(LEN=filenamelen)::AGN_filename,LERG_filename,HERG_filename
   character(LEN=filenamelen)::chline,filestat,cat_filename
-  character(LEN=10),allocatable::tagnames(:)
+  character(LEN=16),allocatable::tagnames(:),tunit(:),tform(:)
   character(LEN=10)::names(3)
   CHARACTER(LEN=5) :: output,output2,tag
   CHARACTER(LEN=10) ::output3
@@ -92,7 +92,7 @@ program sampler
   integer*8::Nsample,Nsample_lerg,Nsample_herg,join,k,n_hist,nside,ntiles,t,Nsample100
   integer::iseed,Nfreq,Nfreq_out,i,ii,nrows,Ncolumns,Ncolumns_lf,nskip,Ngen,Ngen2,jj,kk
   integer::buffer_size,buffer_free,jbuf,buffer_free_old,buffer_size_old,l_outdir
-  integer::count,Ncat_sfr,Ncat_agn,nrows_lerg,nrows_herg,seed(34),nrows_old,nrows_lf
+  integer::count,Ncat_common,nrows_lerg,nrows_herg,seed(34),nrows_old,nrows_lf
   integer::Nsample_old,Nfunction,Nsample_surv,Nhaloes,Nsample_mass,nreds_out
   integer::l,j,nreds,nreds2,nreds_cone,zi,nloop,ist,iostat,nreds_lum,islice
   integer(4) :: ic4, crate4, cmax4,ni,sum_plus,p14(1),i14,ilim,i48,p(1),p_i,try
@@ -384,34 +384,28 @@ program sampler
   coo_min=-1.*coo_max
   print*,'coordinates',coo_max,coo_min
 
-  !AGN simulation follows. If no AGN simulation is needed this is skipped
-  if (no_AGN /=0) goto 0101
-
-
-  !*************************
-  !AGN simulation starts
-  !*************************
-
+ 
 
   !structure of the catalogue
-  Ncat_agn=(2+save_lums)*Nfreq_out+14 !number of catalogue columns: flux in total intensity and polarization, 
-  !plus all other parameters
-  !the additional items are:
-  !lum,mass,x,y,lat,lon,redshift,size,angle,proj_size,rs,popflag
-  !if (save_lums ==1) Ncat_agn=3*Nfreq_out+14 !optionally saving intrinsic luminosities
-
+  Ncat_common=(2+save_lums)*Nfreq_out+17 !number of catalogue columns: flux in total intensity and polarization, 
+!  commmon format for SFGs and AGNs
 
   !creating tag names for the catalogue
-  allocate(tagnames(Ncat_agn))
+  allocate(tagnames(Ncat_common),tunit(Ncat_common),tform(Ncat_common))
   j=1
   tagnames(j)='Lum1400'
+  tunit(j)='log(erg/s/Hz)'
   j=2
+  tagnames(j)='logSFR'
+  tunit(j)='log(Msun/yr)'
+  j=3
   do i=1,Nfreq_out
      write(output,"(i5)")int(frequencies(i+3))
      output=ADJUSTL(output)
      l=LEN_TRIM(output)
      dummy = 'I'//output(:l)
      tagnames(j)=dummy
+     tunit(j)='mJy'
      j=j+1
   enddo
 
@@ -422,34 +416,54 @@ program sampler
      l=LEN_TRIM(output)
      dummy = 'P'//output(:l)
      tagnames(j)=dummy
+     tunit(j)='mJy'
      j=j+1
   enddo
 
   tagnames(j)='Mh'
+  tunit(j)='log(Msun)'
   j=j+1
-  tagnames(j)='MHI'
+  tagnames(j)='MHI_pred'
+  tunit(j)='log(Msun)'
   j=j+1
   tagnames(j)='x_coord'
+  tunit(j)='degs'
   j=j+1
   tagnames(j)='y_coord'
+  tunit(j)='degs'
   j=j+1
   tagnames(j)='latitude'
+  tunit(j)='degs'
   j=j+1
   tagnames(j)='longitude'
+  tunit(j)='degs'
   j=j+1
   tagnames(j)='redshift'
+  tunit(j)='none'
   j=j+1
   tagnames(j)='phys size'
+  tunit(j)='kpc'
   j=j+1
   tagnames(j)='angle'
+  tunit(j)='degs'
   j=j+1
   tagnames(j)='size'
+  tunit(j)='arcsec'
+  j=j+1
+  tagnames(j)='e1'
+  tunit(j)='none'
+  j=j+1
+  tagnames(j)='e2'
+  tunit(j)='none'
   j=j+1
   tagnames(j)='Rs'
+  tunit(j)='none'
   j=j+1
   tagnames(j)='RadioClass'
+  tunit(j)='none'
   j=j+1
   tagnames(j)='OptClass'
+  tunit(j)='none'
   j=j+1
   if (save_lums ==1) then
      !optional tag names for the luminosity
@@ -460,9 +474,21 @@ program sampler
         l=LEN_TRIM(output)
         dummy = 'L'//output(:l)
         tagnames(j)=dummy
+        tunit(j)='log(erg/s/Hz)'
         j=j+1
      enddo
   endif
+  tform(:)='1E'
+
+
+ !AGN simulation follows. If no AGN simulation is needed this is skipped
+  if (no_AGN /=0) goto 0101
+
+
+  !*************************
+  !AGN simulation starts
+  !*************************
+
 
 
 
@@ -1105,7 +1131,7 @@ program sampler
            if (.not. allocated(catout)) then
               !start filling the output catalogue array
 
-             allocate(catout(Ncat_agn,Nsample),stat=iostat)
+             allocate(catout(Ncat_common,Nsample),stat=iostat)
               if (iostat/=0) then
                  print*,'sampler: allocation error'
                  stop
@@ -1113,33 +1139,39 @@ program sampler
            else
               !copy the old part of the output catalogue and add the new part
 
-             allocate(catout_copy(Ncat_agn,Nsample_old))
+             allocate(catout_copy(Ncat_common,Nsample_old))
 
 !              print*,size(catout),Nsample_old
               catout_copy=catout
               deallocate(catout)
-              allocate(catout(Ncat_agn,Nsample_old+Nsample))
+              allocate(catout(Ncat_common,Nsample_old+Nsample))
               catout(:,1:Nsample_old)=catout_copy
               deallocate(catout_copy)
  
 
           endif
            catout(1,jstart:jstart+Nsample-1)=samplex(1:Nsample)        !lum_1.4 GHz
-           catout(2:nfreq_out+1,jstart:jstart+Nsample-1)=radioflux(4:Nfreq,:)  ! total intensity
-           catout(nfreq_out+2:2*nfreq_out+1,jstart:jstart+Nsample-1)=polaflux(4:Nfreq,:)  !polarization
-           catout(2*nfreq_out+2,jstart:jstart+Nsample-1)=darkmass      ! mass
-           catout(2*nfreq_out+3,jstart:jstart+Nsample-1)=himass      ! hi mass
-           catout(2*nfreq_out+4,jstart:jstart+Nsample-1)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
-           catout(2*nfreq_out+5,jstart:jstart+Nsample-1)=longitudes
-           catout(2*nfreq_out+6,jstart:jstart+Nsample-1)=0. ! spherical coordinates - to be filled by wrapper
-           catout(2*nfreq_out+7,jstart:jstart+Nsample-1)=0. 
-           catout(2*nfreq_out+8,jstart:jstart+Nsample-1)=z_gals       ! redshift
-           catout(2*nfreq_out+9,jstart:jstart+Nsample-1)=sizes_3d     !intrinsic size
-           catout(2*nfreq_out+10,jstart:jstart+Nsample-1)=angles       !view angle
-           catout(2*nfreq_out+11,jstart:jstart+Nsample-1)=sizes       ! projected angular size
-           catout(2*nfreq_out+12,jstart:jstart+Nsample-1)=spot_dist   ! distance between bright spots (Rs)
-           catout(2*nfreq_out+13,jstart:jstart+Nsample-1)=ii+3        ! flag to identify population
-           catout(2*nfreq_out+14,jstart:jstart+Nsample-1)=optclass        ! flag to identify optical 
+           catout(2,jstart:jstart+Nsample-1)=-100. !logSFR
+           catout(3:nfreq_out+1,jstart:jstart+Nsample-1)=radioflux(4:Nfreq,:)  ! total intensity
+           catout(nfreq_out+3:2*nfreq_out+2,jstart:jstart+Nsample-1)=polaflux(4:Nfreq,:)  !polarization
+           catout(2*nfreq_out+3,jstart:jstart+Nsample-1)=darkmass      ! mass
+           catout(2*nfreq_out+4,jstart:jstart+Nsample-1)=himass      ! hi mass
+           catout(2*nfreq_out+5,jstart:jstart+Nsample-1)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
+           catout(2*nfreq_out+6,jstart:jstart+Nsample-1)=longitudes
+           catout(2*nfreq_out+7,jstart:jstart+Nsample-1)=0. ! spherical coordinates - to be filled by wrapper
+           catout(2*nfreq_out+8,jstart:jstart+Nsample-1)=0. 
+           catout(2*nfreq_out+9,jstart:jstart+Nsample-1)=z_gals       ! redshift
+           catout(2*nfreq_out+10,jstart:jstart+Nsample-1)=sizes_3d     !intrinsic size
+           catout(2*nfreq_out+11,jstart:jstart+Nsample-1)=angles       !view angle
+           catout(2*nfreq_out+12,jstart:jstart+Nsample-1)=sizes       ! projected angular size
+           catout(2*nfreq_out+13,jstart:jstart+Nsample-1)=-100.      ! ellipticity1
+           catout(2*nfreq_out+14,jstart:jstart+Nsample-1)=-100.       ! ellipticity2
+
+
+
+           catout(2*nfreq_out+15,jstart:jstart+Nsample-1)=spot_dist   ! distance between bright spots (Rs)
+           catout(2*nfreq_out+16,jstart:jstart+Nsample-1)=ii+3        ! flag to identify population
+           catout(2*nfreq_out+17,jstart:jstart+Nsample-1)=optclass        ! flag to identify optical 
 
 
            ! compute intrinsic luminosities and store them in the catalogue if requested
@@ -1151,7 +1183,7 @@ program sampler
                  lums_save(:,i)=log10(radioflux(:,i)/conv_flux)
               enddo
 
-              catout(2*nfreq_out+15:3*nfreq_out+14,jstart:jstart+Nsample-1)=lums_save(4:Nfreq,:)
+              catout(2*nfreq_out+18:3*nfreq_out+17,jstart:jstart+Nsample-1)=lums_save(4:Nfreq,:)
               deallocate(lums_save)
 
            endif
@@ -1189,7 +1221,7 @@ program sampler
            ! writing catalogue
            cat_filename=outdir(1:l_outdir)//'/catalogue_AGN_z'//zstr//'.fits'
 
-           call write_catalogue(cat_filename,catout,Ncat_agn,tagnames)
+           call write_catalogue_new(cat_filename,catout,Ncat_common,tagnames,tunit,tform)
            !free memory
            deallocate(catout,stat=iostat)
            if (iostat/=0) then
@@ -1215,7 +1247,7 @@ program sampler
   deallocate(poladistr,x3,px3,alphascaling_highf,alphascaling_lowf)
   deallocate(alphascaling_highf_pola,alphascaling_lowf_pola)
   deallocate(redshifts,redshift_names)
-  deallocate(tagnames)
+  !deallocate(tagnames,tunit,tform)
 
 
 0101 continue
@@ -1253,74 +1285,6 @@ program sampler
      enddo
      nreds_out=nreds_out+1
   endif
-
-  ! setting number of columns for the catalogue
-  Ncat_sfr=(2+save_lums)*Nfreq_out+13 !total intensity and polarisation
-  !if (save_lums ==1) Ncat_sfr=3*Nfreq_out+11 !total intensity, polarisation and luminisity
-  !The additional fields are:
-  !sfr,mass,x,y,lat,lon,redshift,size,e1,e2,popflag
-
-
-  ! Assign tag names to all columns in the catalogue
-  allocate(tagnames(Ncat_sfr))
-  j=1
-  tagnames(j)='logSFR'
-  j=2
-  do i=1,Nfreq_out
-     write(output,"(i5)")int(frequencies(i+3))
-     output=ADJUSTL(output)
-     l=LEN_TRIM(output)
-     dummy = 'I'//output(:l)
-     tagnames(j)=dummy
-     j=j+1
-  enddo
-  do i=1,Nfreq_out
-     write(output,"(i5)")int(frequencies(i+3))
-     output=ADJUSTL(output)
-     l=LEN_TRIM(output)
-     dummy = 'P'//output(:l)
-     tagnames(j)=dummy
-     j=j+1
-  enddo
-  tagnames(j)='Mh'
-  j=j+1
-  tagnames(j)='MHI'
-  j=j+1
-  tagnames(j)='x_coord'
-  j=j+1
-  tagnames(j)='y_coord'
-  j=j+1
-  tagnames(j)='latitude'
-  j=j+1
-  tagnames(j)='longitude'
-  j=j+1
-  tagnames(j)='redshift'
-  j=j+1
-  tagnames(j)='size'
-  j=j+1
-  tagnames(j)='e1'
-  j=j+1
-  tagnames(j)='e2'
-  j=j+1
-  tagnames(j)='RadioClass'
-  j=j+1
-  tagnames(j)='OptClass'
-  j=j+1
-  if (save_lums ==1) then
-     !Luminosity
-     do i=1,Nfreq_out
-        !write(output,"(i3)")i
-        !write(output,"(f10.5)")frequencies(i)
-        write(output,"(i5)")int(frequencies(i+3))
-        output=ADJUSTL(output)
-        l=LEN_TRIM(output)
-        dummy = 'L'//output(:l)
-        tagnames(j)=dummy
-        j=j+1
-     enddo
-  endif
-
-  tagnames(1)='logSFR'
 
   !read dust SEDs
   Ncolumns=4
@@ -1731,36 +1695,43 @@ program sampler
               jstart=Nsample_old+1
               if (.not. allocated(catout)) then
               !start filling the output catalogue array
-                 allocate(catout(Ncat_sfr,Nsample),stat=iostat)
+                 allocate(catout(Ncat_common,Nsample),stat=iostat)
               if (iostat/=0) then
                  print*,'sampler: allocation error'
                  stop
               endif
            else
               !copy the old part of the output catalogue and add the new part
-              allocate(catout_copy(Ncat_sfr,Nsample_old))
+              allocate(catout_copy(Ncat_common,Nsample_old))
               catout_copy=catout
               deallocate(catout)
-              allocate(catout(Ncat_sfr,Nsample_old+Nsample))
+              allocate(catout(Ncat_common,Nsample_old+Nsample))
               catout(:,1:Nsample_old)=catout_copy
               deallocate(catout_copy)
            endif
-           catout(1,jstart:jstart+Nsample-1)=samplex(1:Nsample)        !lum_1.4 GHz
-           catout(2:nfreq_out+1,jstart:jstart+Nsample-1)=radioflux(4:Nfreq,:)  ! total intensity
-           catout(nfreq_out+2:2*nfreq_out+1,jstart:jstart+Nsample-1)=polaflux(4:Nfreq,:)  !polarization
-           catout(2*nfreq_out+2,jstart:jstart+Nsample-1)=darkmass      ! mass
-           catout(2*nfreq_out+3,jstart:jstart+Nsample-1)=himass      ! mass
-           catout(2*nfreq_out+4,jstart:jstart+Nsample-1)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
-           catout(2*nfreq_out+5,jstart:jstart+Nsample-1)=longitudes
-           catout(2*nfreq_out+6,jstart:jstart+Nsample-1)=0. ! spherical coordinates - to be filled by wrapper
-           catout(2*nfreq_out+7,jstart:jstart+Nsample-1)=0. 
 
-           catout(2*nfreq_out+8,jstart:jstart+Nsample-1)=z_gals
-           catout(2*nfreq_out+9,jstart:jstart+Nsample-1)=sizes  
-           catout(2*nfreq_out+10,jstart:jstart+Nsample-1)=ellipticity1  
-           catout(2*nfreq_out+11,jstart:jstart+Nsample-1)=ellipticity2  
-           catout(2*nfreq_out+12,jstart:jstart+Nsample-1)=ii !SGSs
-           catout(2*nfreq_out+13,jstart:jstart+Nsample-1)=optclass !early/late-type
+
+           catout(1,jstart:jstart+Nsample-1)=-100. !Lum1400
+           catout(2,jstart:jstart+Nsample-1)=samplex(1:Nsample)        !logSFR
+           catout(3:nfreq_out+2,jstart:jstart+Nsample-1)=radioflux(4:Nfreq,:)  ! total intensity
+           catout(nfreq_out+3:2*nfreq_out+2,jstart:jstart+Nsample-1)=polaflux(4:Nfreq,:)  !polarization
+           catout(2*nfreq_out+3,jstart:jstart+Nsample-1)=darkmass      ! mass
+           catout(2*nfreq_out+4,jstart:jstart+Nsample-1)=himass      ! mass
+           catout(2*nfreq_out+5,jstart:jstart+Nsample-1)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
+           catout(2*nfreq_out+6,jstart:jstart+Nsample-1)=longitudes
+           catout(2*nfreq_out+7,jstart:jstart+Nsample-1)=0. ! spherical coordinates - to be filled by wrapper
+           catout(2*nfreq_out+8,jstart:jstart+Nsample-1)=0. 
+
+           catout(2*nfreq_out+9,jstart:jstart+Nsample-1)=z_gals
+           catout(2*nfreq_out+10,jstart:jstart+Nsample-1)=-100. ! size_3d
+           catout(2*nfreq_out+11,jstart:jstart+Nsample-1)=-100. ! angle
+           catout(2*nfreq_out+12,jstart:jstart+Nsample-1)=sizes  
+       
+           catout(2*nfreq_out+13,jstart:jstart+Nsample-1)=ellipticity1  
+           catout(2*nfreq_out+14,jstart:jstart+Nsample-1)=ellipticity2  
+           catout(2*nfreq_out+15,jstart:jstart+Nsample-1)=-100. !spot dist
+           catout(2*nfreq_out+16,jstart:jstart+Nsample-1)=ii !SGSs
+           catout(2*nfreq_out+17,jstart:jstart+Nsample-1)=optclass !early/late-type
 
            ! compute intrinsic luminosities and store them in the catalogue if requested
            if (save_lums ==1) then
@@ -1770,7 +1741,7 @@ program sampler
                  conv_flux=1./(4.*pi*(lumr(zlum)*Mpc)**2)*1.e26*(1+zlum) !L [erg/s/Hz] ->S [mJy]
                  lums_save(:,i)=log10(radioflux(:,i)/conv_flux)
               enddo
-              catout(2*nfreq_out+14:3*nfreq_out+12,jstart:jstart+Nsample-1)=lums_save(4:Nfreq,:)
+              catout(2*nfreq_out+18:3*nfreq_out+17,jstart:jstart+Nsample-1)=lums_save(4:Nfreq,:)
               deallocate(lums_save)
 
            endif
@@ -1790,7 +1761,7 @@ program sampler
            ! wrinting catalogue to disk
            cat_filename=outdir(1:l_outdir)//'/catalogue_SFG_z'//zstr//'.fits'
 
-           call write_catalogue(cat_filename,catout,Ncat_sfr,tagnames)
+           call write_catalogue_new(cat_filename,catout,Ncat_common,tagnames,tunit,tform)
            ! catalogue written
            print*,'done'
            deallocate(catout)
@@ -1806,7 +1777,7 @@ program sampler
   deallocate(redshifts,redshift_names)
   deallocate(dustsed,dif)
   deallocate(Lsyn,Lfree,Ld)
-  deallocate(frequencies,frequencies_rest,tagnames)
+  deallocate(frequencies,frequencies_rest,tagnames,tunit,tform)
 
 0202 continue
 
