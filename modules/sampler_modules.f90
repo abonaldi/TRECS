@@ -599,7 +599,6 @@ contains
     populations(:)=0
 
     do i=1,nrows
-
        do j=1,nbins
           if ((data(i) >= binmins(j)) .and. (data(i) < binmaxs(j)).and. (flags(i)==0)) then
              data_indices(i)=j
@@ -647,9 +646,10 @@ contains
 !!$  end subroutine assign_bins_old
 !!$
 
-  subroutine extract_subsample(indices,nrows,i,subsample)
+  subroutine extract_subsample(indices,nrows,i,subsample,n)
+! added the extra parameter required for overlapping bins
     implicit none
-    integer::indices(:),subsample(:),i,j,nrows,ii
+    integer::indices(:),subsample(:),i,j,nrows,ii,n
 
     ii=1
     do j=1,nrows
@@ -658,9 +658,87 @@ contains
           ii=ii+1
        endif
     enddo
+    n=ii-1 ! actual number of elements I filled
+ end subroutine extract_subsample
 
 
-  end subroutine extract_subsample
+ subroutine extract_subsample_new(data,nrows,bmin,bmax,subsample,N)
+    implicit none
+    integer::subsample(:),i,j,nrows,ii,N
+    real(sp)::data(:),bmin,bmax
+
+    subsample(:)=0
+    ii=1
+    do j=1,nrows
+       if ((data(j) >=bmin) .and. (data(j)<bmax) .and. data(j) /=-100.) then 
+          subsample(ii)=j
+          ii=ii+1
+       endif
+    enddo
+    N=ii-1
+
+  end subroutine extract_subsample_new
+
+
+
+
+  subroutine cross_new(data_big,sample_big,data_small,sample_small,matches,nbig,nsmall,scatter,iseed)
+    implicit none
+    integer::matches(:),nbig,nsmall
+    integer::i,j,jstart,iseed,sample_big(:),sample_small(:)
+    real(sp)::scatter,data_big(:),data_small(:),s
+
+
+
+    ! scroll between the big catalogue starting from a random position. This will give more independent results if the correlation is repeated
+
+!!$print*,iseed
+!!$stop
+    jstart=int(rand()*nbig)
+    if (jstart <1) jstart=1
+
+    do i=1,nsmall
+       if (nbig ==0) goto 200 ! job done if all objects have been matched
+       if (matches(sample_small(i)) ==-100) then ! this object has not been matched already
+          s=abs(randgauss_boxmuller(iseed)) ! random number for the scatter
+          do j=jstart,nbig
+
+             if((data_big(sample_big(j))/=-100) .and. &
+                  &(abs(data_small(sample_small(i)))-data_big(sample_big(j))<=scatter*data_small(sample_small(i))*s  ) ) then 
+
+
+                matches(sample_small(i))=sample_big(j)
+                data_big(sample_big(j))=-100.
+                nbig=nbig-1 
+                goto 100
+             endif
+          enddo
+
+          if (jstart >1) then 
+             do j=1,jstart-1
+                if (nbig ==0) goto 200 ! job done if all objects have been matched
+                if((data_big(sample_big(j)) /=-100.) .and. &
+                     &(abs(data_small(sample_small(i))-data_big(sample_big(j))) <= scatter*data_small(sample_small(i))*s)) then
+                   
+                   matches(sample_small(i))=sample_big(j)
+                   data_big(sample_big(j))=-100. 
+                   nbig=nbig-1
+                   goto 100
+                endif
+             enddo
+          endif
+100       continue
+       endif
+    enddo
+
+
+200 continue
+  end subroutine cross_new
+
+
+
+
+
 
 
   subroutine cross(data_big,data_small,matches,nbig,nsmall,scatter)
@@ -677,48 +755,38 @@ contains
     jstart=int(rand()*nbig)
     if (jstart <1) jstart=1
 
- !   print*,'jstart',jstart
     do i=1,nsmall
+       if (nbig ==0) goto 200 ! job done if all objects have been matched
        if (matches(i) ==-100) then ! this object has not been matched already
           s=abs(randgauss_boxmuller(iseed)) ! random number for the scatter
- !         print*,'random',s
-
-          do j=jstart,nbig
-!             print*,data_small(i),data_big(j)
-             
+           do j=jstart,nbig
              if((data_big(j) /=-100.) .and. (abs(data_small(i)-data_big(j)) <= scatter*data_small(i)*s)) then
                 
                 matches(i)=j
-   !             print*,data_big(matches(i)),data_small(i)
-                data_big(j)=-100. 
+                data_big(j)=-100.
+                nbig=nbig-1 
                 goto 100
              endif
           enddo
 
           if (jstart >1) then 
              do j=1,jstart-1
+                if (nbig ==0) goto 200 ! job done if all objects have been matched
                 if((data_big(j) /=-100.) .and. (abs(data_small(i)-data_big(j)) <= scatter*data_small(i)*s)) then
                    
                    matches(i)=j
-  !                 print*,data_big(matches(i)),data_small(i)
                    data_big(j)=-100. 
-
+                   nbig=nbig-1
                    goto 100
                 endif
              enddo
           endif
-!!$print*,'ok2'
-
 100       continue
        endif
     enddo
 
-!!$stop
-!!$    do i=1,nsmall
-!!$       if (matches(i) /=-100) print*,data_small(i),data_big(matches(i))
-!!$    enddo
-!!$
-!!$stop
+
+200 continue
   end subroutine cross
 
 end module random_tools
