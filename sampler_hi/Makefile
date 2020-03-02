@@ -18,7 +18,7 @@ OBJ := ../modules/random_modules.o ../modules/sampler_io.o  ../modules/sampler_m
 
 default: all
 all : $(OBJ)
-	$(F90) $(F90FLAGS) -o ../bin/sampler_continuum $(OBJ) $(LINK) 
+	$(F90) $(F90FLAGS) -o ../bin/sampler_hi $(OBJ) $(LINK) 
 
 %.o : %.f90
 	$(F90) $(F90FLAGS) $(INCLUDE) -o $@ -c $<

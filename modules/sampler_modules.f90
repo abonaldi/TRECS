@@ -1094,7 +1094,7 @@ contains
   !-----------------------------------------------------------------------
 
   function dA(z)
-    ! angular diameter distance in units of Mpc
+    ! angular diameter distance in units of Mpc/h
 
     real(dp), INTENT(IN) :: z
     real(dp) :: dA
@@ -1116,7 +1116,7 @@ contains
     real(dp), INTENT(IN) :: z
     real(dp) :: lumr
 
-    lumr=r(z)*(1.+z)
+    lumr=r(z)*(1._dp+z)
 
   end function lumr
 

@@ -2,14 +2,10 @@
 ! This program is part of the T-RECS code
 ! Author: A. Bonaldi
 ! see Bonaldi et al. (2018) for more details
-! reads the results from sampler and collate them 
-! it should be run separately for SFGs and AGNs, as they have different catalogue columns
-! projects the Euclidian coordinates for the objects 
-! on the sphere and rotates to specified centre of FoV
-! generates spherical random coordinates for big fields
+! Cross-matches two T-RECS catalogues, using a user-specified column in each file 
+! It runs on all redshift slices
+! File names should be given just until before "_z*.fits" as suffix is added
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
 
 program xmatch
 
@@ -20,7 +16,7 @@ program xmatch
   USE random_tools
   use sampler_io
   USE paramfile_io, ONLY : paramfile_handle, parse_init, parse_int, &
-       parse_string, parse_double, parse_lgt, concatnl
+       parse_string, parse_double, parse_lgt, concatnl, parse_real
   USE extension, ONLY : getEnvironment, getArgument, nArguments
   implicit none
 
@@ -64,11 +60,7 @@ program xmatch
 
   call date_and_time(values = values_time(:,1))
 
-  !1)input file:
-  !  -bins in redshift
-  !  -number of objects
-
-
+  ! check calling sequence is correct
   if (nArguments() == 0) then
      paramfile=''
   else if (nArguments() == 1) then
@@ -78,7 +70,7 @@ program xmatch
      stop 1
   endif
 
-
+  ! read input file
   handle = parse_init(paramfile)
   description = concatnl( &
        & " Enter the name of the first catalogue ")
@@ -104,28 +96,27 @@ program xmatch
        & " Enter the tag name of the first catalogue ")
   tag2=parse_string(handle,'tag2', default='', descr=description)
 
-
   description = concatnl( &
        & " Enter the simulation size: ")
   side1 = parse_double(handle, 'side1', default=5.d0, vmin=0.d0, descr=description)
-
 
   description = concatnl( &
        & " Enter the simulation size: ")
   side2 = parse_double(handle, 'side2', default=5.d0, vmin=0.d0, descr=description)
 
-
   description = concatnl( &
        & " Enter the scatter for the match: ")
-  scatter = parse_double(handle, 'scatter', default=1.d-2, vmin=1.d-5, descr=description)
+  scatter = parse_real(handle, 'scatter', default=1.e-2, vmin=1.e-5, descr=description)
 
   description = concatnl( &
        & " which objects in the final catalogue?")
   selection = parse_int(handle, 'selection', default=0, vmax=2, descr=description)
 
 
+  ! End read input file
 
 
+  !define the redshift slices
   redshift_names=(/'0.01','0.02','0.05','0.10','0.15','0.20','0.25','0.30','0.35','0.40','0.45','0.50',&
        '0.55','0.60','0.65','0.70','0.75','0.80','0.85','0.90','0.95','1.00','1.20','1.40','1.60','1.80','2.00'&
        ,'2.20','2.40','2.60','2.80','3.00','3.20','3.40','3.60','3.80','4.00','4.20','4.40','4.60','4.80','5.00'&
@@ -134,23 +125,26 @@ program xmatch
 
   nreds_out=57
 
+
+  ! Establish format of the catalogues and set the format of the crossmatched catalogue
+  ! The template will be given by the first couple of catalogues that exist for the same redhift
   do jj=1,nreds_out 
-     ! establish format of the catalogues and set the format of the crossmatched catalogue
 
      filename1=trim(filename1_root)//'_z'//trim(redshift_names(jj))//'.fits'
      filename2=trim(filename2_root)//'_z'//trim(redshift_names(jj))//'.fits'
 
-
-     !Explore filename1 content
+     !check existence of the files
      call columns_catalogue(filename1,Ncols1,status1)
      call columns_catalogue(filename2,Ncols2,status2)
 
-     if (status1+status2 ==0) then ! both files exist: can set the format for all files in the redshift list
+     if (status1+status2 ==0) then ! both files exist: proceed
 
         allocate(tagnames1(Ncols1),tunit1(Ncols1),tform1(Ncols1),stat=iostat)
 
+        !read the names of columns for catalogue 1
         call rows_catalogue(filename1,Ncols1,nrows1,tagnames1,tunit1)
 
+        ! look for the user-specified column to use in catalogue 1
         i_tag1=-1
         do ii=1,Ncols1
            tagname=tagnames1(ii)
@@ -164,21 +158,14 @@ program xmatch
         endif
 
 
-        !Explore filename2 content
+        ! !read the names of columns for catalogue 1
         call columns_catalogue(filename2,Ncols2,status)
-
-        if (status ==0) then 
-           print*,'number of columns in file '//trim(filename2),Ncols2
-        else
-           print*,'Problem reading file '//trim(filename2)
-           stop
-        endif
 
         allocate(tagnames2(Ncols2),tunit2(Ncols2),tform2(Ncols2),stat=iostat)
         tunit2(:)=''
         tform2(:)='1E'
 
-
+        ! look for the user-specified column to use in catalogue 2
         call rows_catalogue(filename2,Ncols2,nrows2,tagnames2,tunit2)
 
         i_tag2=-1
@@ -199,8 +186,7 @@ program xmatch
         Ncols=Ncols1+Ncols2
         allocate(tagnamesX(Ncols),tunitX(Ncols),tformX(Ncols))
 
-
-
+        ! the duplicated columns will ne tagged as '_2' in the output catalogue
         do i=1,Ncols2
            tagname=tagnames2(i)
            do ii=1,Ncols1
@@ -212,13 +198,12 @@ program xmatch
         tagnamesX(Ncols1+1:Ncols)=tagnames2
         tunitX(1:Ncols1)=tunit1
         tunitX(Ncols1+1:Ncols)=tunit2
-
         tformX(:)='1E'
-
-        goto 100
+        goto 100 ! once the format is set go out of this loop
      endif
   enddo
 
+  ! if out of the redshift loop no files found, stop
   if (status1+status2 /=0) then
      print*,'Error: specified files not found'
      stop
@@ -230,18 +215,20 @@ program xmatch
 
 
   do jj=1,nreds_out 
-     ! establish format of the catalogues and set the format of the crossmatched catalogue
 
+
+     !filenames for redshift slice jj
      filename1=trim(filename1_root)//'_z'//trim(redshift_names(jj))//'.fits'
      filename2=trim(filename2_root)//'_z'//trim(redshift_names(jj))//'.fits'
      filenameX=trim(filenameX_root)//'_z'//trim(redshift_names(jj))//'.fits'
 
+     !check existence of files
      call columns_catalogue(filename1,Ncols1,status1)
      call columns_catalogue(filename2,Ncols2,status2)
 
      print*,'Files to Cross-match:'
-     print*,filename1
-     print*,filename2
+     print*,trim(filename1)
+     print*,trim(filename2)
 
      if ((status1 /=0) .and. (status2 /=0)) goto 200! do nothing for this redshift slice if none of the files exist
 
@@ -256,11 +243,13 @@ program xmatch
            stop
         endif
         call read_catalogue(filename1,Ncols1,Nrows1,data1)
+
         if (side2 < side1) then
-           ! reduce size of data1
+           ! reduce size of data1 to size of data2 
 
            print*,'Reducing size of first catalogue to',side2
            nrows_old=nrows1
+           !copy the catalogue
            allocate(data_old(nrows_old,Ncols1))
            data_old=data1
            deallocate(data1)
@@ -293,8 +282,9 @@ program xmatch
               if ((abs(data_old(i,i_x)) <= side2/2.) .and. (abs(data_old(i,i_y)) <= side2/2.) ) nrows1=nrows1+1
            enddo
 
-
+           !allocate reduced catalogue
            allocate(data1(nrows1,Ncols1))
+           ! copy old to new
            ii=0
            do i=1,nrows_old
               if ((abs(data_old(i,i_x)) <= side2/2.) .and. (abs(data_old(i,i_y)) <= side2/2.)) then
@@ -319,10 +309,11 @@ program xmatch
         call read_catalogue(filename2,Ncols2,Nrows2,data2)
 
         if (side1 < side2) then
-           ! reduce size of data2
+           ! reduce size of data2 to size of data1
 
            print*,'Reducing size of second catalogue to',side1
            nrows_old=nrows2
+           !copy the catalogue
            allocate(data_old(nrows_old,Ncols2))
            data_old=data2
            deallocate(data2)
@@ -355,8 +346,9 @@ program xmatch
               if ((abs(data_old(i,i_x)) <= side1/2.) .and. (abs(data_old(i,i_y)) <= side1/2.)) nrows2=nrows2+1
            enddo
 
-
+           !allocate reduces catalogue
            allocate(data2(nrows2,Ncols2))
+           !copy old to new
            ii=0
            do i=1,nrows_old
               if ((abs(data_old(i,i_x)) <= side1/2.) .and. (abs(data_old(i,i_y)) <= side1/2.)) then
@@ -370,195 +362,178 @@ program xmatch
 
      endif
 
-  if ((status1 /=0) .and. (status2==0)) then
-     ! only one file exis, copy its content on the crossmatched catalogue
-     if (selection==1) goto 200 
-!!$ print*,Ncols1+1,Ncols,Ncols2
-!!$stop
-     ! write content of second catalogue to the crossmathed one
-     ntotal=nrows2
-     print*,'Total objects',ntotal
-
-     allocate(data(Ncols+1,ntotal))
-     data(:,:)=-100.
-     data(Ncols1+1:Ncols,:)=transpose(data2)
-
-  endif
-
-  if ((status1 ==0) .and. (status2/=0)) then
-     ! only one file exis, copy its content on the crossmatched catalogue
-
-     if (selection==2) goto 200 
-     ! write content of first catalogue to the crossmathed one
-     ntotal=nrows1
-     print*,'Total objects',ntotal
-
-     allocate(data(Ncols,ntotal))
-     data(:,:)=-100.
-     data(1:Ncols1,1:ntotal)=transpose(data1)
-  endif
-
-
-  if (status1+status2==0) then ! both files exist: crssomatch
-     ! choices for only one file existing or both or none
-
-     if (Nrows1<Nrows2) then
-        if(nrows1 <=10) then
-           nbins=1
-           allocate(binmins(1),binmaxs(1))
-           binmins=minval(data1(:,i_tag1))*(1.-3.*scatter)
-           binmaxs=maxval(data1(:,i_tag1))*(1.+3.*scatter)
-        else
-           !      nbins=int(nrows1/10.)
-           nbins=10
-           allocate(column(nrows1),binmins(nbins),binmaxs(nbins))
-           column=data1(:,i_tag1)
-           call get_bins(column,nbins,binmins,binmaxs)
-           ! this will create bins overlap
-           binmins=binmins*(1.-3.*scatter)
-           binmaxs=binmaxs*(1.+3.*scatter)
-           deallocate(column)   
-        endif
-     else
-
-        if(nrows2 <=10) then
-           nbins=1
-           allocate(binmins(1),binmaxs(1))
-           binmins=minval(data2(:,i_tag2))-scatter
-           binmaxs=maxval(data2(:,i_tag2))+scatter
-        else
-           !   nbins=int(nrows2/10.)
-           nbins=10
-           print*,nbins
-           !stop
-           allocate(column(nrows2),binmins(nbins),binmaxs(nbins))
-           column=data2(:,i_tag2)
-
-           print*,minval(column),maxval(column)
-           !stop
-           call get_bins(column,nbins,binmins,binmaxs)
-           ! this will create bins overlap
-           binmins=binmins*(1.-scatter)
-           binmaxs=binmaxs*(1.+scatter)
-           deallocate(column)
-        endif
-     endif
-
-     allocate(matching_sources(nrows2),sample1(nrows1),sample2(nrows2),data1_dummy(nrows1,Ncols1))
-     matching_sources(:)=-100.
-     data1_dummy=data1
-
-     do i=1,nbins
-        !print*,'bin',i
-
-        call extract_subsample_new(data1_dummy(:,i_tag1),nrows1,binmins(i),binmaxs(i),sample1,n1)
-        call extract_subsample_new(data2(:,i_tag2),nrows2,binmins(i),binmaxs(i),sample2,n2)
-
-
-        if ((n1/=0) .and. (n2 /=0)) call cross_new(data1_dummy(:,i_tag1)&
-             &,sample1(1:n1),data2(:,i_tag2),sample2(1:n2),matching_sources,n1,n2,scatter,iseed)
-
-     enddo
-
-     deallocate(sample1,sample2,data1_dummy)
-
-     nmatched=0
-     do ii=1,nrows2
-        if (matching_sources(ii) /=-100) nmatched=nmatched+1
-     enddo
-
-
-     print*,'Matched objects',nmatched,'out of',nrows2
-
-
-
-     select case(selection)
-
-     case(0)
-        ! write content of both catalogues
-        ntotal=nrows1+nrows2-nmatched
-        print*,'Total objects',ntotal
-
-        allocate(data(Ncols,ntotal))
-        data(:,:)=-100.
-        data(1:Ncols1,1:nrows1)=transpose(data1)
-        !print*,data(1:nrows1,i_tag1)
-
-        j=nrows1+1
-
-        do i=1,nrows2
-           if (matching_sources(i) /=-100) then
-              data(Ncols1+1:Ncols,matching_sources(i))=data2(i,1:Ncols2) 
-           else
-              data(Ncols1+1:Ncols,j)=data2(i,1:Ncols2)
-              ! TODO: here overwrite coordinates with the random ones?
-              j=j+1
-           endif
-        enddo
-
-     case(1)
-        ! write only content of first catalogue, with matches
-        ntotal=nrows1
-        print*,'Total objects',ntotal
-
-        allocate(data(Ncols,ntotal))
-        data(:,:)=-100.
-        data(1:Ncols1,1:nrows1)=transpose(data1)
-        !print*,data(1:nrows1,i_tag1)
-
-        !  j=nrows1+1
-
-        do i=1,nrows2
-           if (matching_sources(i) /=-100) then
-              data(Ncols1+1:Ncols,matching_sources(i))=data2(i,1:Ncols2) 
-           endif
-        enddo
-
-     case(2)
-        ! write only content  of second catalogue, with matches
+     if ((status1 /=0) .and. (status2==0)) then
+        ! only one file exis, copy its content to the output catalogue, with no matches 
+        if (selection==1) goto 200 
 
         ntotal=nrows2
         print*,'Total objects',ntotal
+        allocate(data(Ncols+1,ntotal))
+        data(:,:)=-100.
+        data(Ncols1+1:Ncols,:)=transpose(data2)
 
+     endif
+
+     if ((status1 ==0) .and. (status2/=0)) then
+        ! only one file exis, copy its content to the output catalogue, with no matches 
+
+        if (selection==2) goto 200 
+
+        ntotal=nrows1
+        print*,'Total objects',ntotal
         allocate(data(Ncols,ntotal))
         data(:,:)=-100.
-        data(Ncols1+1:Ncols,1:nrows2)=transpose(data2)
+        data(1:Ncols1,1:ntotal)=transpose(data1)
+     endif
 
-        ! TODO: here overwrite coordinates with the random ones?
 
-        j=nrows1+1
+     if (status1+status2==0) then 
+!        If both files exist, crossmatch
 
-        do i=1,nrows2
-           if (matching_sources(i) /=-100) then
-              data(1:Ncols1+1,i)=data1(matching_sources(i),1:Ncols1)
+        ! determine which file if bigger, foe efficiency
+        if (Nrows1<Nrows2) then
+           if(nrows1 <=10) then
+              nbins=1
+              allocate(binmins(1),binmaxs(1))
+              binmins=minval(data1(:,i_tag1))*(1.-3.*scatter)
+              binmaxs=maxval(data1(:,i_tag1))*(1.+3.*scatter)
+           else
+              nbins=10
+              allocate(column(nrows1),binmins(nbins),binmaxs(nbins))
+              column=data1(:,i_tag1)
+              call get_bins(column,nbins,binmins,binmaxs)
+              ! this will create bins overlap
+              binmins=binmins*(1.-3.*scatter)
+              binmaxs=binmaxs*(1.+3.*scatter)
+              deallocate(column)   
            endif
+        else
+           if(nrows2 <=10) then
+              nbins=1
+              allocate(binmins(1),binmaxs(1))
+              binmins=minval(data2(:,i_tag2))-scatter
+              binmaxs=maxval(data2(:,i_tag2))+scatter
+           else
+              nbins=10
+              allocate(column(nrows2),binmins(nbins),binmaxs(nbins))
+              column=data2(:,i_tag2)
+              call get_bins(column,nbins,binmins,binmaxs)
+              ! this will create bins overlap
+              binmins=binmins*(1.-scatter)
+              binmaxs=binmaxs*(1.+scatter)
+              deallocate(column)
+           endif
+        endif
+
+        allocate(matching_sources(nrows2),sample1(nrows1),sample2(nrows2),data1_dummy(nrows1,Ncols1))
+        matching_sources(:)=-100.
+        data1_dummy=data1
+
+        do i=1,nbins
+           call extract_subsample_new(data1_dummy(:,i_tag1),nrows1,binmins(i),binmaxs(i),sample1,n1)
+           call extract_subsample_new(data2(:,i_tag2),nrows2,binmins(i),binmaxs(i),sample2,n2)
+           
+           if ((n1/=0) .and. (n2 /=0)) call cross_new(data1_dummy(:,i_tag1)&
+                &,sample1(1:n1),data2(:,i_tag2),sample2(1:n2),matching_sources,n1,n2,scatter,iseed)
+           
         enddo
 
-     end select
+        deallocate(sample1,sample2,data1_dummy)
 
-     deallocate(binmins,binmaxs,matching_sources)
-  endif
+        nmatched=0
+        do ii=1,nrows2
+           if (matching_sources(ii) /=-100) nmatched=nmatched+1
+        enddo
 
-  print*,'Writing to:'
-  print*,filenameX
-  call write_catalogue_new(filenameX,data,Ncols,tagnamesX,tunitX,tformX)
-  deallocate(data)
 
-200 continue
-  if (allocated(data1)) deallocate(data1)
-  if (allocated(data2)) deallocate(data2)
-  !deallocate(data1,data2,data,matching_sources,binmins,binmaxs)
+        print*,'Matched objects',nmatched,'out of',nrows2
 
-enddo
+        select case(selection)
 
-call date_and_time(values = values_time(:,2))
+        case(0)
+           ! write content of both catalogues
+           ntotal=nrows1+nrows2-nmatched
+           print*,'Total objects',ntotal
 
-values_time(:,1) = values_time(:,2) - values_time(:,1)
-clock_time =  (  (values_time(3,1)*24 &
-    &           + values_time(5,1))*60. &
-    &           + values_time(6,1))*60. &
-    &           + values_time(7,1) &
-    &           + values_time(8,1)/1000.
-PRINT*,"Total clock time [m]:",clock_time/60.
-PRINT*,"               "//code//" > Normal completion"
-end program
+           allocate(data(Ncols,ntotal))
+           data(:,:)=-100.
+           data(1:Ncols1,1:nrows1)=transpose(data1)
+           !print*,data(1:nrows1,i_tag1)
+
+           j=nrows1+1
+
+           do i=1,nrows2
+              if (matching_sources(i) /=-100) then
+                 data(Ncols1+1:Ncols,matching_sources(i))=data2(i,1:Ncols2) 
+              else
+                 data(Ncols1+1:Ncols,j)=data2(i,1:Ncols2)
+                 ! TODO: here overwrite coordinates with the random ones?
+                 j=j+1
+              endif
+           enddo
+
+        case(1)
+           ! write only content of first catalogue, with matches
+           ntotal=nrows1
+           print*,'Total objects',ntotal
+
+           allocate(data(Ncols,ntotal))
+           data(:,:)=-100.
+           data(1:Ncols1,1:nrows1)=transpose(data1)
+           !print*,data(1:nrows1,i_tag1)
+
+           !  j=nrows1+1
+
+           do i=1,nrows2
+              if (matching_sources(i) /=-100) then
+                 data(Ncols1+1:Ncols,matching_sources(i))=data2(i,1:Ncols2) 
+              endif
+           enddo
+
+        case(2)
+           ! write only content  of second catalogue, with matches
+
+           ntotal=nrows2
+           print*,'Total objects',ntotal
+
+           allocate(data(Ncols,ntotal))
+           data(:,:)=-100.
+           data(Ncols1+1:Ncols,1:nrows2)=transpose(data2)
+
+           ! TODO: here overwrite coordinates with the random ones?
+
+           j=nrows1+1
+
+           do i=1,nrows2
+              if (matching_sources(i) /=-100) then
+                 data(1:Ncols1+1,i)=data1(matching_sources(i),1:Ncols1)
+              endif
+           enddo
+
+        end select
+
+        deallocate(binmins,binmaxs,matching_sources)
+     endif
+
+     print*,'Writing to:'
+     print*,filenameX
+     call write_catalogue_new(filenameX,data,Ncols,tagnamesX,tunitX,tformX)
+     deallocate(data)
+
+200  continue
+     if (allocated(data1)) deallocate(data1)
+     if (allocated(data2)) deallocate(data2)
+
+  enddo
+
+  call date_and_time(values = values_time(:,2))
+
+  values_time(:,1) = values_time(:,2) - values_time(:,1)
+  clock_time =  (  (values_time(3,1)*24 &
+       &           + values_time(5,1))*60. &
+       &           + values_time(6,1))*60. &
+       &           + values_time(7,1) &
+       &           + values_time(8,1)/1000.
+  PRINT*,"Total clock time [m]:",clock_time/60.
+  PRINT*,"               "//code//" > Normal completion"
+end program xmatch

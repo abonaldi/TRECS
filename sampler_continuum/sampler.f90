@@ -1,3 +1,8 @@
+!!!! test!! trying to get AGNs and SFGs on the same output file (ione single loop on redshift)
+! compare with sampler_new.f90 for the last stable version with the wto separated loops
+
+
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This program is part of the T-RECS code
 ! Author: A. Bonaldi
@@ -57,9 +62,10 @@ program sampler
   !single precision variables
   !real(sp)::center_lat,center_lon
   real(sp)::z_min,z_max,draw
+  real(sp)::squarealphas(3)
   real(sp),allocatable::delta(:),work(:,:),diff(:)
   real(sp),allocatable::Radioflux(:,:),catout(:,:),catout_copy(:,:),samplex(:),lums(:),z_gals(:)
-  real(sp),allocatable::Polaflux(:,:),inclinations(:),ellipticity1(:),ellipticity2(:),polafracs(:),lums_save(:,:)
+  real(sp),allocatable::Polaflux(:,:),inclinations(:),qrat(:),ellipticity1(:),ellipticity2(:),polafracs(:),lums_save(:,:),thetas(:)
   real(sp)::sample100(100)
   real(sp),allocatable::Radioflux_copy(:,:),samplex_copy(:),sizes(:),radioflux_slice(:,:),lums_slice(:)
   real(sp),allocatable::angles(:),sizes_3d(:),lums_copy(:),spot_dist(:),himass(:)
@@ -69,7 +75,7 @@ program sampler
   real(sp),allocatable::masses_lerg(:),masses_herg(:),lerg_p(:),herg_p(:)
   REAL(SP) :: clock_time,coo_max,coo_min,dlat,dlon,dz,delta_perp,delta_parall
   REAL(SP) ::deltatheta,deltaz,mu,flux14,dmtol,mgal,ncone_binned
-  real(sp)::dm_model,dm_model2,dm_best,lat,lon,maxflux(1),redshift,minmass,minmass_cone
+  real(sp)::dm_model,dm_model2,dm_best,lat,lon,maxflux(1),redshift,minmass,minmass_cone,q
   real(sp)::dim,lum_threshold,theta_high,theta_low,sin_i,logs,alpha_low
   real(sp)::alpha_high,minfreq,norm_f,dlogl,col,b,a,arg1,arg2,th,freq_norm
   real(sp)::minm(Nmbins),maxm(Nmbins),mc(1),halfmax(1),mw(1),sg_m(1)
@@ -90,7 +96,7 @@ program sampler
   !integer variables
   integer::no_AGN,no_SFG,save_lums,Nsample_binned,istart(1),iend(1),istart_i,iend_i,iii,jstart
   integer*8::Nsample,Nsample_lerg,Nsample_herg,join,k,n_hist,nside,ntiles,t,Nsample100
-  integer::iseed,Nfreq,Nfreq_out,i,ii,nrows,Ncolumns,Ncolumns_lf,nskip,Ngen,Ngen2,jj,kk
+  integer::iseed,Nfreq,Nfreq_out,i,ii,nrows,Ncolumns,Ncolumns_lf,nskip,Ngen,Ngen2,jj,kk,nrows_sf
   integer::buffer_size,buffer_free,jbuf,buffer_free_old,buffer_size_old,l_outdir
   integer::count,Ncat_common,nrows_lerg,nrows_herg,seed(34),nrows_old,nrows_lf
   integer::Nsample_old,Nfunction,Nsample_surv,Nhaloes,Nsample_mass,nreds_out
@@ -387,7 +393,7 @@ program sampler
  
 
   !structure of the catalogue
-  Ncat_common=(2+save_lums)*Nfreq_out+17 !number of catalogue columns: flux in total intensity and polarization, 
+  Ncat_common=(2+save_lums)*Nfreq_out+18 !number of catalogue columns: flux in total intensity and polarization, 
 !  commmon format for SFGs and AGNs
 
   !creating tag names for the catalogue
@@ -441,20 +447,23 @@ program sampler
   tagnames(j)='redshift'
   tunit(j)='none'
   j=j+1
-  tagnames(j)='phys size'
-  tunit(j)='kpc'
-  j=j+1
-  tagnames(j)='angle'
-  tunit(j)='degs'
-  j=j+1
   tagnames(j)='size'
   tunit(j)='arcsec'
   j=j+1
-  tagnames(j)='e1'
+  tagnames(j)='inclination'
+  tunit(j)='degs'
+  j=j+1
+  tagnames(j)='axis ratio'
   tunit(j)='none'
   j=j+1
-  tagnames(j)='e2'
-  tunit(j)='none'
+  tagnames(j)='bmaj'
+  tunit(j)='arcsec'
+  j=j+1
+  tagnames(j)='bmin'
+  tunit(j)='arcsec'
+  j=j+1
+  tagnames(j)='PA'
+  tunit(j)='degs'
   j=j+1
   tagnames(j)='Rs'
   tunit(j)='none'
@@ -482,8 +491,8 @@ program sampler
 
 
  !AGN simulation follows. If no AGN simulation is needed this is skipped
-  if (no_AGN /=0) goto 0101
-
+!  if (no_AGN /=0) goto 0101
+!if (no_AGN ==0) then
 
   !*************************
   !AGN simulation starts
@@ -520,6 +529,25 @@ program sampler
   nrows=rows_number(AGN_filename,1,nskip)
   Nrows_lf=nrows
   n_hist=nrows
+  
+!endif
+
+ !read dust SEDs for SFGs
+  Ncolumns=4
+  nrows=rows_number(filename10,1,nskip)
+  allocate(dustsed(nrows,ncolumns),dif(nrows))
+  call read_columns(filename10,2,nrows,Ncolumns,nskip,dustsed)
+
+
+  dustsed(:,2)=10.**dustsed(:,2)
+  dustsed(:,3)=10.**dustsed(:,3)
+  dustsed(:,4)=10.**dustsed(:,4)
+
+
+
+
+
+
 
 
   !redshift slices for AGNS
@@ -557,9 +585,9 @@ program sampler
 
 
   ! names of AGN populations
-  names(1)='FSRQ'
-  names(2)='BLLac'
-  names(3)='SS_AGN'
+!  names(1)='FSRQ'
+!  names(2)='BLLac'
+!  names(3)='SS_AGN'
   alphamed=(/-0.1,-0.1,-0.8/) ! median spectral index for the three populations
 
   do zi=1,nreds_out-1   ! Main redshift loop 
@@ -621,6 +649,8 @@ program sampler
            ! here allocate Radioflux to store total intensity results
            allocate(Radioflux(Nfreq,buffer_size),samplex(buffer_size))
 
+
+
            allocate(data(n_hist,ncolumns_lf),x(n_hist),px(n_hist),poisson_numbers(n_hist))  ! allocate arrays to read in luminosity files
 
 
@@ -649,7 +679,7 @@ program sampler
 
               if ((zlow_lum >= zlow) .and. (zlum <= zhigh)) then ! here zlum and not zhigh_lum because i dont want to lose any small slice 
 
-                 print*,'slice',redshifts_lum(islice)
+!                 print*,'slice',redshifts_lum(islice)
 
                  zstr_long=redshift_names_lum(islice) !string tag 
 
@@ -658,14 +688,12 @@ program sampler
 
                  !read luminosities 
                  AGN_filename='../../TRECS_Inputs/LF/CharLum/Characteristic_Luminosity/luminosity_'//zstr_long//'.dat'  
-
                  call read_columns(AGN_filename,2,nrows_lf,Ncolumns_lf,nskip,data)
 
                  x=data(:,2) ! log of characteristic luminosity
                  deltax=x(2)-x(1) ! luminosity bin size    
                  px=10.**data(:,ii+3) !N(logl) per sterad 
                  norm=sim_area/sterad_deg  
-
 
                  !poission realization to give the number of objects givin the distribution
                  do i=1,Nrows_lf
@@ -1161,17 +1189,15 @@ program sampler
            catout(2*nfreq_out+7,jstart:jstart+Nsample-1)=0. ! spherical coordinates - to be filled by wrapper
            catout(2*nfreq_out+8,jstart:jstart+Nsample-1)=0. 
            catout(2*nfreq_out+9,jstart:jstart+Nsample-1)=z_gals       ! redshift
-           catout(2*nfreq_out+10,jstart:jstart+Nsample-1)=sizes_3d     !intrinsic size
-           catout(2*nfreq_out+11,jstart:jstart+Nsample-1)=angles       !view angle
-           catout(2*nfreq_out+12,jstart:jstart+Nsample-1)=sizes       ! projected angular size
-           catout(2*nfreq_out+13,jstart:jstart+Nsample-1)=-100.      ! ellipticity1
-           catout(2*nfreq_out+14,jstart:jstart+Nsample-1)=-100.       ! ellipticity2
-
-
-
-           catout(2*nfreq_out+15,jstart:jstart+Nsample-1)=spot_dist   ! distance between bright spots (Rs)
-           catout(2*nfreq_out+16,jstart:jstart+Nsample-1)=ii+3        ! flag to identify population
-           catout(2*nfreq_out+17,jstart:jstart+Nsample-1)=optclass        ! flag to identify optical 
+           catout(2*nfreq_out+10,jstart:jstart+Nsample-1)=sizes       ! projected angular size
+           catout(2*nfreq_out+11,jstart:jstart+Nsample-1)=-100.     !inclinations
+           catout(2*nfreq_out+12,jstart:jstart+Nsample-1)=-100.     !axis ratio
+           catout(2*nfreq_out+13,jstart:jstart+Nsample-1)=-100.      !bmaj (host)
+           catout(2*nfreq_out+14,jstart:jstart+Nsample-1)=-100.       !bmin (host)
+           catout(2*nfreq_out+15,jstart:jstart+Nsample-1)=-100.       !PA (of the host)
+           catout(2*nfreq_out+16,jstart:jstart+Nsample-1)=spot_dist   ! distance between bright spots (Rs)
+           catout(2*nfreq_out+17,jstart:jstart+Nsample-1)=ii+3        ! flag to identify population
+           catout(2*nfreq_out+18,jstart:jstart+Nsample-1)=optclass        ! flag to identify optical 
 
 
            ! compute intrinsic luminosities and store them in the catalogue if requested
@@ -1207,112 +1233,15 @@ program sampler
               print*,'sampler: deallocation error'
               stop
            endif
+           
+
+
 !!$
 !!$           print*,'done'
 400        continue
 
-        enddo
-
-        if (Nsample_old /=0) then 
-        write(output,"(i5)")t
-           output=ADJUSTL(output)
-           l=LEN_TRIM(output)
-
-           ! writing catalogue
-           cat_filename=outdir(1:l_outdir)//'/catalogue_AGN_z'//zstr//'.fits'
-
-           call write_catalogue_new(cat_filename,catout,Ncat_common,tagnames,tunit,tform)
-           !free memory
-           deallocate(catout,stat=iostat)
-           if (iostat/=0) then
-              print*,'sampler: deallocation error'
-              stop
-           endif
-
-           print*,'done'
-
-        endif
-
-
-        deallocate(masses_lerg,masses_herg,lerg_p,herg_p)
-       
-     endif
-
-
-  enddo
-
-  ! end of AGN modelling
-  print*,'finished AGNs'
-  ! free memory
-  deallocate(poladistr,x3,px3,alphascaling_highf,alphascaling_lowf)
-  deallocate(alphascaling_highf_pola,alphascaling_lowf_pola)
-  deallocate(redshifts,redshift_names)
-  !deallocate(tagnames,tunit,tform)
-
-
-0101 continue
-
-  ! SFG model begins
-  if (no_SFG /=0) goto 0202  ! skip SFG if needed
-  !  nreds=67  !SF gals
-  !  if (do_clustering==1)  
-
-  nreds=57 !SF gals until z=8 (where I have cone)
-  nreds_out=nreds
-
-  allocate(redshifts(nreds),redshift_names(nreds))
-
-  redshifts=(/0.01,0.02,0.05,0.10,0.15,0.20,0.25,0.30,0.35,0.40,0.45,0.50,0.55,&
-       0.60,0.65,0.70,0.75,0.80,0.85,0.90,0.95,1.00,1.20,1.40,1.60,1.80,2.00,2.20,2.40,&
-       2.60,2.80,3.00,3.20,3.40,3.60,3.80,4.00,4.20,4.40,4.60,4.80,5.00,5.20,5.40,5.60,5.80,&
-       6.00,6.20,6.40,6.60,6.80,7.00,7.20,7.40,7.60,7.80,8.00,8.20,8.40,8.60,8.80,9.00,9.20,9.40,9.60,9.80,10.00/)
-
-  redshift_names=(/'0.01','0.02','0.05','0.10','0.15','0.20','0.25','0.30','0.35','0.40','0.45','0.50',&
-       '0.55','0.60','0.65','0.70','0.75','0.80','0.85','0.90','0.95','1.00','1.20','1.40','1.60','1.80','2.00'&
-       ,'2.20','2.40','2.60','2.80','3.00','3.20','3.40','3.60','3.80','4.00','4.20','4.40','4.60','4.80','5.00'&
-       ,'5.20','5.40','5.60','5.80','6.00','6.20','6.40','6.60','6.80','7.00','7.20','7.40','7.60','7.80','8.00',&
-       '8.20','8.40','8.60','8.80','9.00','9.20','9.40','9.60','9.80','10.0'/)
-
-
-
-
-  if (zmax < maxval(redshifts)) then
-     nreds_out=0
-     i=1
-     do  while (redshifts(i)<=zmax)
-        nreds_out=nreds_out+1
-        i=i+1
-     enddo
-     nreds_out=nreds_out+1
-  endif
-
-  !read dust SEDs
-  Ncolumns=4
-  nrows=rows_number(filename10,1,nskip)
-  allocate(dustsed(nrows,ncolumns),dif(nrows))
-  call read_columns(filename10,2,nrows,Ncolumns,nskip,dustsed)
-
-
-  dustsed(:,2)=10.**dustsed(:,2)
-  dustsed(:,3)=10.**dustsed(:,3)
-  dustsed(:,4)=10.**dustsed(:,4)
-
-  ! main redshift loop
-  do zi=1,nreds_out-1
-
-     z=redshifts(zi)
-
-     if ((z_min <= z) .and. (z_max >= z)) then    ! redshift slice with center z is processed
-
-        !getting the size of the redshift slice
-        select case (zi)
-        case (1)
-           zlow=0.
-           zhigh=(redshifts(zi+1)+z)/2.
-        case default
-           zlow=(redshifts(zi-1)+z)/2.
-           zhigh=(redshifts(zi+1)+z)/2.
-        end select
+        enddo ! end loop AGN populations
+deallocate(masses_lerg,masses_herg,lerg_p,herg_p)
 
         print*,'************************'
         print*,'SFGs: Processing redshift',z,' Range',zlow,zhigh
@@ -1356,7 +1285,7 @@ program sampler
 
         Ncolumns=5
         nrows=rows_number(SFR_filename,1,nskip)
-        Nrows_lf=nrows
+        Nrows_sf=nrows
 
         allocate(data(nrows,ncolumns),x(nrows),px(nrows))
         call read_columns(SFR_filename,2,nrows,Ncolumns,nskip,data)
@@ -1372,9 +1301,11 @@ program sampler
         names(2)='spheroids'
         names(3)='lens_spheroids'
 
-
-
-        Nsample_old=0
+           ! morphological coefficients for UVgal, spheroids, lensed spheroids 
+        squarealphas(1)=0.2**2. ! spiral
+        squarealphas(2)=0.5**2. ! elliptical
+        squarealphas(3)=0.5**2. ! elliptical
+        
         do ii=1,3 !loop on SFR populations  
            ! information for limiting ram usage
            ! processing long files in chuncks of lenght buffer_size
@@ -1407,7 +1338,7 @@ program sampler
 
            norm=volume*integ/sum(px) ! normalisation for histogram 
            Ngen_db=volume*integ
-           N=Nrows_lf 
+           N=Nrows_sf 
 
            allocate(poisson_numbers(N),stat=iostat)
 
@@ -1569,16 +1500,26 @@ program sampler
            call pola_SFGS(inclinations,frequencies,radioflux,polaflux)
 
 
+
+  !deallocate(radioflux,polaflux,samplex,darkmass,himass,latitudes,&
+  !              &longitudes,z_gals,sizes,sizes_3d,angles,spot_dist,optclass,stat=iostat)
+
+!if (allocated(thetas)) print*,'ciao'
+!if (allocated(satellite_flag)) print*,'ciao'
+!if (allocated(optclass)) print*,'ciao'
+!if (allocated(ellipticity2)) print*,'ciao'
+
+
            ! compute halo mass from sfr 
            allocate(Darkmass(Nsample),himass(Nsample),Darkmass_halo(Nsample)&
                 &,latitudes(Nsample),longitudes(Nsample),z_gals(Nsample),&
                 &sizes(Nsample),ellipticity1(Nsample),ellipticity2(Nsample)&
-                &,satellite_flag(Nsample),optclass(Nsample),stat=iostat)
+                &,thetas(Nsample),satellite_flag(Nsample),optclass(Nsample),qrat(Nsample),stat=iostat)
            if (iostat/=0) then
               print*,'sampler: allocation error'
               stop
            endif
-
+print*,'hello'
            satellite_flag(:)=1 ! by default SFGs are as satellites
 
            himass(:)=0.
@@ -1646,49 +1587,20 @@ program sampler
 
            deallocate(satellite_flag,darkmass_halo)
 
-
-
+           
            !associate size to objects
            do i=1,Nsample
               z_i=dble(z_gals(i))
               dim=size_SF(Darkmass(i),z_i,ii)   ! physical size
               sizes(i)=theta(dim,z_i)           ! apparent size
+              q=sqrt(squarealphas(ii)+(cos(inclinations(i)))**2.*(1.-squarealphas(ii))) ! axis ratio, linked to inclination and sub-population
+              qrat(i)=q
+              ellipticity1(i)=sqrt(sizes(i)**2./q) ! apparent bmaj
+              ellipticity2(i)=q*ellipticity1(i)     ! apparent bmin
+              Thetas(i)=ran_mwc(iseed)*360. !PA in degs
            enddo
 
-           ! ellipticities (Tunbridge et al. 2016)
-           N=100
-           allocate(x2(N),px2(N)) ! distribution for |e|
 
-           do i=1,N
-              x2(i)=i*1./real(N)  !|e| ranging 0 to 1 sampled by N points
-              b=0.19
-              a=0.58
-              arg1=pi*x2(i)/2.
-              arg2=(2.*x2(i)/b)**a
-              px2(i)=x2(i)*((cos(arg1))**2 *exp(-1.*arg2))
-           enddo
-
-           !call poisson_constrained(iseed,x2,Px2,0.,1.,ellipticity1,Nsample)
-           if (Nsample >=100) then 
-              call poisson_constrained(iseed,x2,Px2,0.,1.,ellipticity1,Nsample)
-           else
-              Nsample100=100
-              sample100(:)=0.
-              call poisson_constrained(iseed,x2,Px2,0.,1.,sample100,Nsample100)
-              call reordersample(iseed,sample100)
-              do i=1,Nsample
-                 ellipticity1(i)=sample100(i)
-              enddo
-           endif
-           deallocate(x2,px2)
-
-
-           do i=1,Nsample
-              th=ran_mwc(iseed)*2.*pi*2. !2theta
-              ellipticity2(i)=ellipticity1(i)*sin(th)
-              ellipticity1(i)=ellipticity1(i)*cos(th)
-           enddo
-           ! end ellipticities
 
 
     !preparing to output the data in catalogue format
@@ -1721,17 +1633,16 @@ program sampler
            catout(2*nfreq_out+6,jstart:jstart+Nsample-1)=longitudes
            catout(2*nfreq_out+7,jstart:jstart+Nsample-1)=0. ! spherical coordinates - to be filled by wrapper
            catout(2*nfreq_out+8,jstart:jstart+Nsample-1)=0. 
-
            catout(2*nfreq_out+9,jstart:jstart+Nsample-1)=z_gals
-           catout(2*nfreq_out+10,jstart:jstart+Nsample-1)=-100. ! size_3d
-           catout(2*nfreq_out+11,jstart:jstart+Nsample-1)=-100. ! angle
-           catout(2*nfreq_out+12,jstart:jstart+Nsample-1)=sizes  
-       
-           catout(2*nfreq_out+13,jstart:jstart+Nsample-1)=ellipticity1  
-           catout(2*nfreq_out+14,jstart:jstart+Nsample-1)=ellipticity2  
-           catout(2*nfreq_out+15,jstart:jstart+Nsample-1)=-100. !spot dist
-           catout(2*nfreq_out+16,jstart:jstart+Nsample-1)=ii !SGSs
-           catout(2*nfreq_out+17,jstart:jstart+Nsample-1)=optclass !early/late-type
+           catout(2*nfreq_out+10,jstart:jstart+Nsample-1)=sizes  
+           catout(2*nfreq_out+11,jstart:jstart+Nsample-1)=inclinations
+           catout(2*nfreq_out+12,jstart:jstart+Nsample-1)=qrat
+           catout(2*nfreq_out+13,jstart:jstart+Nsample-1)=ellipticity1  !bmaj
+           catout(2*nfreq_out+14,jstart:jstart+Nsample-1)=ellipticity2  !bmin
+           catout(2*nfreq_out+15,jstart:jstart+Nsample-1)=thetas !PA
+           catout(2*nfreq_out+16,jstart:jstart+Nsample-1)=-100. !spot dist
+           catout(2*nfreq_out+17,jstart:jstart+Nsample-1)=ii !SGSs
+           catout(2*nfreq_out+18,jstart:jstart+Nsample-1)=optclass !early/late-type
 
            ! compute intrinsic luminosities and store them in the catalogue if requested
            if (save_lums ==1) then
@@ -1750,17 +1661,18 @@ program sampler
 
            deallocate(radioflux,polaflux,inclinations,samplex,darkmass,himass,&
                 &latitudes,longitudes,z_gals,sizes,lums,ellipticity1,&
-                &ellipticity2,optclass,stat=iostat)
+                &ellipticity2,optclass,qrat,thetas,stat=iostat)
            if (iostat/=0) then
               print*,'sampler: deallocation error'
 
            endif
 500        continue
         enddo ! loop on SFR populations
-        if (Nsample_old /=0) then 
-           ! wrinting catalogue to disk
-           cat_filename=outdir(1:l_outdir)//'/catalogue_SFG_z'//zstr//'.fits'
 
+
+           ! writing catalogue to disk
+        if (Nsample_old /=0) then 
+           cat_filename=outdir(1:l_outdir)//'/catalogue_continuum_z'//zstr//'.fits'
            call write_catalogue_new(cat_filename,catout,Ncat_common,tagnames,tunit,tform)
            ! catalogue written
            print*,'done'
@@ -1771,15 +1683,16 @@ program sampler
        
      endif
 
-  enddo !loop on redshifts
+  enddo
 
-  !free all memory
+ 
+  ! free memory
+  deallocate(poladistr,x3,px3,alphascaling_highf,alphascaling_lowf)
+  deallocate(alphascaling_highf_pola,alphascaling_lowf_pola)
   deallocate(redshifts,redshift_names)
   deallocate(dustsed,dif)
   deallocate(Lsyn,Lfree,Ld)
   deallocate(frequencies,frequencies_rest,tagnames,tunit,tform)
-
-0202 continue
 
   ! compute time for the run
   call date_and_time(values = values_time(:,2))

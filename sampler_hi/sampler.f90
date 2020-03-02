@@ -48,10 +48,13 @@ program sampler
   CHARACTER(LEN=4) ::zstr
 
   !single precision variables
-  real(sp)::z_min,z_max,mu,clock_time,coo_max,coo_min,masslim,dm_model,dim,sin_i
+  real(sp)::z_min,z_max,mu,clock_time,coo_max,coo_min
+  real(sp)::masslim,fluxlim,dm_model,dim,sin_i
+  real(sp)::q,q2,d_a,flux,flux_conv
   real(sp),allocatable::samplex(:),samplex_slice(:),samplex_copy(:),redshifts(:)
-  real(sp),allocatable::catout(:,:),z_gals(:),sizes(:)
+  real(sp),allocatable::catout(:,:),z_gals(:),sizes(:),fluxes(:)
   real(sp),allocatable::darkmass(:),latitudes(:),longitudes(:),inclinations(:)
+  real(sp),allocatable::bmaj(:),bmin(:),pa(:),qrat(:)
   real(sp),allocatable::MHItab(:),Mhalotab(:)
 
 !!$  !double precision variables
@@ -105,33 +108,17 @@ program sampler
 
   handle = parse_init(paramfile)
 
-!!$  description = concatnl( &
-!!$       & " Enter the name of the file with frequency list: ")
-!!$  freq_filename=  parse_string(handle, 'freqs_file', default=chline, descr=description)
-
-!!$  description = concatnl( &
-!!$       & " Do you want to skip the AGN simulation (0=no, 1=yes)")
-!!$  no_AGN = parse_int(handle, 'no_AGN', default=0, vmax=1, descr=description)
-!!$
-!!$  description = concatnl( &
-!!$       & " Do you want to skip the SFG simulation (0=no, 1=yes)")
-!!$  no_SFG = parse_int(handle, 'no_SFG', default=0, vmax=1, descr=description)
-
   description = concatnl( &
        & " Enter the simulation size: ")
   sim_side = parse_double(handle, 'sim_side', default=5.d0, vmin=0.d0, descr=description)
 
+!!$  description = concatnl( &
+!!$       & " Enter the flux limit [Jy]: ")
+!!$  masslim = parse_double(handle, 'masslim', default=7.d0, descr=description)
+
   description = concatnl( &
        & " Enter the flux limit [Jy]: ")
-  masslim = parse_double(handle, 'masslim', default=7.d0, descr=description)
-
-!!$  description = concatnl( &
-!!$       & " Enter the frequency at which the fluxlimit is imposed [MHz]: ")
-!!$  fluxlim_freq = parse_double(handle, 'fluxlim_freq', default=1400.d0, descr=description)
-!!$
-!!$  description = concatnl( &
-!!$       & " Do you want to output the luminosities (0=no, 1=yes)? ")
-!!$  save_lums = parse_int(handle, 'save_lums', default=0, vmax=1, descr=description)
+  fluxlim = parse_double(handle, 'fluxlim', default=10.d-9, descr=description)
 
   description = concatnl( &
        & " Enter the minimum redhift to consider: ")
@@ -139,7 +126,7 @@ program sampler
 
   description = concatnl( &
        & " Enter the maximum redshift to consider: ")
-  z_max = parse_real(handle, 'z_max', default=8., vmin=0., descr=description)
+  z_max = parse_real(handle, 'z_max', default=0.3, vmin=0., descr=description)
 
   description = concatnl( &
        & " Enter the name of the the output file directory:")
@@ -185,7 +172,7 @@ program sampler
 
 
   !structure of the catalogue
-  Ncat_hi=9  ! hi mass, darm mass, latitude, longitude
+  Ncat_hi=15 ! hi mass, darm mass, latitude, longitude
   !(2+save_lums)*Nfreq_out+14 !number of catalogue columns: flux in total intensity and polarization, 
   !plus all other parameters
   !the additional items are:
@@ -193,11 +180,16 @@ program sampler
   !if (save_lums ==1) Ncat_agn=3*Nfreq_out+14 !optionally saving intrinsic luminosities
 
 
+
+
   !creating tag names for the catalogue
   allocate(tagnames(Ncat_hi),tunit(Ncat_hi),tform(Ncat_hi))
   j=1
   tagnames(j)='MHI'
   tunit(j)='log(Msun)'
+  j=j+1
+  tagnames(j)='HI flux'
+  tunit(j)='mJy'
   j=j+1
   tagnames(j)='Mh'
   tunit(j)='log(Msun)'
@@ -222,10 +214,27 @@ program sampler
   j=j+1
   tagnames(j)='inclination'
   tunit(j)='degs'
+  j=j+1
+  tagnames(j)='axis ratio'
+  tunit(j)='none'
+  j=j+1
+  tagnames(j)='bmaj'
+  tunit(j)='arcsec'
+  j=j+1
+  tagnames(j)='bmin'
+  tunit(j)='arcsec'
+  j=j+1
+  tagnames(j)='PA'
+  tunit(j)='degs'
+  j=j+1
+  tagnames(j)='OptClass'
+  tunit(j)='none'
+ 
+
 
   tform(:)='1E'
 
-  nreds=57 !SF gals until z=8 (where I have cone)
+  nreds=8 !HI galaxies up to z=0.3 only!!!
   nreds_out=nreds
 
   allocate(redshifts(nreds),redshift_names(nreds))
@@ -254,10 +263,16 @@ program sampler
 
   ! main redshift loop
   do zi=1,nreds_out-1
-
      z=redshifts(zi)
-
+     !d_l=lumr(z)!angular diameter distance of the centre of the slice (Mpc)
+     !flux_conv=(d_l**(-2.))/49.8 ! conversion from HI mass to flux (Jy/hz) Duffy et al. (2012)
      if ((z_min <= z) .and. (z_max >= z)) then    ! redshift slice with center z is processed
+        d_a=da(z)*h  ! angular diameter distance Mpc
+        flux_conv=d_a**(-2)/2.36e5
+        masslim=log10(fluxlim/flux_conv)
+        print*,'masslim=',masslim
+        !stop
+
 
         !getting the size of the redshift slice
         select case (zi)
@@ -274,17 +289,6 @@ program sampler
         print*,'************************'
 
         zstr=redshift_names(zi) 
-
-!        conv_flux=1./(4.*pi*(lumr(z)*Mpc)**2)*1.e26*(1+z) !L [erg/s/Hz] ->S [mJy] 
-!        frequencies_rest=frequencies*(1.+z) !freq in the rest frame (for K correction)
-
-        !z-distance conversion at this redshift
-!!$        deltaz=zhigh-zlow
-!!$        delta_parall=r(zhigh)-r(zlow)
-!!$
-!!$        !z-angular distance conversion at this redshift
-!!$        delta_perp=1. 
-!!$        deltatheta=theta(delta_perp,z)
 
         volumetot=4.*pi/3.*(r(zhigh)**3-r(zlow)**3)
         volume=volumetot*skyfrac  !volume corresponding to FoV
@@ -315,7 +319,7 @@ program sampler
         buffer_size=1000
         buffer_free=buffer_size
         jbuf=0 ! index to fill buffer 
- 
+
 
         integ=trapint(x,px) ! integral with trapezium rule for the PDF, to give the number of galaxies 
 
@@ -360,6 +364,8 @@ program sampler
 
         !print*,poisson_numbers,sum(poisson_numbers)
 
+
+
         do i=1,N
            Nran=poisson_numbers(i)
            xmax=x(i)+dx/2
@@ -371,11 +377,16 @@ program sampler
               allocate(samplex_slice(Nran))
 
               do j=1,Nran
-!                 samplex_slice(j)=ran_mwc(iseed)*(xmax-xmin)+xmin
-                 samplex_slice(j)=randgauss_boxmuller(iseed)*(xmax-xmin)+xmin
-                 if (samplex_slice(j)>= masslim) Nsample_surv= Nsample_surv+1  ! implement flux threshold
+                 samplex_slice(j)=ran_mwc(iseed)*(xmax-xmin)+xmin
+                 !                 samplex_slice(j)=randgauss_boxmuller(iseed)*(xmax-xmin)+xmin
+
+                 flux=flux_conv*(10.**samplex_slice(j)) ! flux in mJy
+                 !print*,samplex_slice(j),flux
+                 !if (samplex_slice(j)>= masslim) Nsample_surv= Nsample_surv+1  ! implement flux threshold
+                 if (flux>= fluxlim) Nsample_surv= Nsample_surv+1  ! implement flux threshold
               enddo
 
+              !stop
               !              print*,'Number of galaxies above flux limit',Nsample_surv
 
 
@@ -397,12 +408,21 @@ program sampler
               endif
 
               ! fill buffer
+
+              ! flux limit
               do j=1,Nran
-                 if (samplex_slice(j)>= masslim) then
+                 flux=flux_conv*(10.**samplex_slice(j))
+                 if (flux>= fluxlim) then
                     jbuf=jbuf+1
                     samplex(jbuf)=samplex_slice(j)
                  endif
               enddo
+!!$              do j=1,Nran
+!!$                 if (samplex_slice(j)>= masslim) then
+!!$                    jbuf=jbuf+1
+!!$                    samplex(jbuf)=samplex_slice(j)
+!!$                 endif
+!!$              enddo
               buffer_free=buffer_size-jbuf
 
               deallocate(samplex_slice)
@@ -465,8 +485,10 @@ program sampler
 !!$        enddo
 
         ! compute halo mass from sfr 
-        allocate(Darkmass(Nsample),latitudes(Nsample),&
-             &longitudes(Nsample),z_gals(Nsample),sizes(Nsample),inclinations(Nsample),stat=iostat)
+        allocate(fluxes(Nsample),Darkmass(Nsample),latitudes(Nsample),&
+             &longitudes(Nsample),z_gals(Nsample),sizes(Nsample),&
+             &inclinations(Nsample),qrat(Nsample),bmaj(Nsample),&
+             &bmin(Nsample),pa(Nsample),stat=iostat)
         if (iostat/=0) then
            print*,'sampler: allocation error'
            stop
@@ -495,34 +517,56 @@ program sampler
         MHItab=data(:,1)
         Mhalotab=data(:,2)
         deallocate(data)
-!        minmass_cone=9.2 ! this is the minimum halo mass in the lightcone
+        !        minmass_cone=9.2 ! this is the minimum halo mass in the lightcone
 
 
 
-!print*,'--'
-           do i=1,Nsample
-              dm_model=interpol(samplex(i),MHItab,Mhalotab,Nfunction)
-!              satellite_flag(i)=dm_model/darkmass_halo(i) ! galaxy/halo mass ratio
-              Darkmass(i)=dm_model ! halo mass to associate with BGC instead of satellite         
-!              satellite_flag(i)=dm_model/darkmass_halo(i) ! galaxy/halo mass ra!tio  
-!              if (dm_model >=minmass_cone) satellite_flag(i)=0 ! only galaxies with mass smaller that minimum halo mass in the lightcone are kept as satellites
+        !print*,'--'
+        do i=1,Nsample
+           dm_model=interpol(samplex(i),MHItab,Mhalotab,Nfunction)
+           !              satellite_flag(i)=dm_model/darkmass_halo(i) ! galaxy/halo mass ratio
+           Darkmass(i)=dm_model ! halo mass to associate with BGC instead of satellite         
+           !              satellite_flag(i)=dm_model/darkmass_halo(i) ! galaxy/halo mass ra!tio  
+           !              if (dm_model >=minmass_cone) satellite_flag(i)=0 ! only galaxies with mass smaller that minimum halo mass in the lightcone are kept as satellites
 
-!print*,samplex(i),dm_model
+           !print*,samplex(i),dm_model
 
-              latitudes(i)=(ran_mwc(iseed)-0.5)*sim_side
-              longitudes(i)=(ran_mwc(iseed)-0.5)*sim_side
-              z_gals(i)=ran_mwc(iseed)*(zhigh-zlow)+zlow
-              z_i=dble(z_gals(i))
-              dim=(0.506+randgauss_boxmuller(iseed)*0.003)*samplex(i)-3.293+randgauss_boxmuller(iseed)*0.009 !log phys size kpc , Wang et al. 2016 eq 2. 
-              dim=10.**dim/1000./2. !size in Mpc, radius instead of diameter
-              sizes(i)=theta(dim,z_i)*0.2 ! apparent size. the 0.2 factor converts to exponential scale radius, wang et al. 2016 section 3.1
-       
-              !inclinations
-              sin_i=ran_mwc(iseed)
-              inclinations(i)=asin(sin_i)*180./pi
-          !the HI size is smaller than the radio size computed from here, but this could be due to the DM mass  modelled here. check after xmatch. 
+           latitudes(i)=(ran_mwc(iseed)-0.5)*sim_side
+           longitudes(i)=(ran_mwc(iseed)-0.5)*sim_side
+           z_gals(i)=ran_mwc(iseed)*(zhigh-zlow)+zlow
+           z_i=dble(z_gals(i))
 
-           enddo
+           d_a=da(z)*h  ! angular diameter distance Mpc
+           flux_conv=d_a**(-2)/2.36e5
+           fluxes(i)=flux_conv*10.**samplex(i)
+           dim=(0.506+randgauss_boxmuller(iseed)*0.003)*samplex(i)-3.293+randgauss_boxmuller(iseed)*0.009 !log phys size kpc , Wang et al. 2016 eq 2. 
+
+
+           Dim=10.**dim/1000./2. !size in Mpc, radius instead of diameter
+           sizes(i)=theta(dim,z_i)!*0.2 ! apparent size. 
+           !old: the 0.2 factor converts to exponential scale radius, wang et al. 2016 section 3.1
+
+
+
+           !TODO: change this 
+
+           !inclinations
+           sin_i=ran_mwc(iseed)
+           inclinations(i)=asin(sin_i)*180./pi
+           !the HI size is smaller than the radio size computed from here, but this could be due to the DM mass  modelled here. check after xmatch. 
+           q=0.2+randgauss_boxmuller(iseed)*0.05 ! spiral morphology
+           q2=q**2 ! square alpha
+
+           q=sqrt(q2+(cos(inclinations(i)))**2.*(1.-q2)) ! observed axis ratio, linked to inclination
+
+
+           ! in the continuum sampler, this is either 0.2 or 0.5 for spiral or elliptical. 
+
+           qrat(i)=q
+           bmaj(i)=sqrt(sizes(i)**2./q) ! apparent bmaj
+           bmin(i)=q*bmaj(i)     ! apparent bmin
+           pa(i)=ran_mwc(iseed)*360. !PA in degs
+        enddo
 
         !preparing to output the data in catalogue format
 
@@ -533,26 +577,29 @@ program sampler
            print*,'sampler: allocation error'
            stop
         endif
-print*,'qui2'
+
         catout(1,:)=samplex(1:Nsample)       ! HI mass
-        catout(2,:)=darkmass       
-        catout(3,:)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
-        catout(4,:)=longitudes
-        catout(5,:)=0. ! spherical coordinates - to be filled by wrapper
-        catout(6,:)=0. 
-        catout(7,:)=z_gals
-        catout(8,:)=sizes  
-        catout(9,:)=inclinations
-!!$        catout(2*nfreq_out+10,jstart:jstart+Nsample-1)=ellipticity1  
-!!$        catout(2*nfreq_out+11,jstart:jstart+Nsample-1)=ellipticity2  
-!!$        catout(2*nfreq_out+12,jstart:jstart+Nsample-1)=ii !SGSs
-!!$        catout(2*nfreq_out+13,jstart:jstart+Nsample-1)=optclass !SGSs
+        catout(2,:)=fluxes
+        catout(3,:)=darkmass       
+        catout(4,:)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
+        catout(5,:)=longitudes
+        catout(6,:)=0. ! spherical coordinates - to be filled by wrapper
+        catout(7,:)=0. 
+        catout(8,:)=z_gals
+        catout(9,:)=sizes  
+        catout(10,:)=inclinations
+        catout(11,:)=qrat
+        catout(12,:)=bmaj
+        catout(13,:)=bmin
+        catout(14,:)=pa
+        catout(15,:)=2. ! spiral morphology
 
         ! compute intrinsic luminosities and store them in the catalogue if requested
 
 
-        deallocate(samplex,darkmass,&
-             &latitudes,longitudes,z_gals,sizes,MHItab,Mhalotab,inclinations,stat=iostat)
+        deallocate(samplex,fluxes,darkmass,&
+             &latitudes,longitudes,z_gals,sizes,MHItab,Mhalotab,&
+             &inclinations,pa,qrat,bmin,bmaj,stat=iostat)
         if (iostat/=0) then
            print*,'sampler: deallocation error'
 
