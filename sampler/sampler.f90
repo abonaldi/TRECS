@@ -70,7 +70,7 @@ program sampler
   REAL(SP) :: clock_time,coo_max,coo_min,dlat,dlon,dz,delta_perp,delta_parall
   REAL(SP) ::deltatheta,deltaz,mu,flux14,dmtol,mgal,ncone_binned
   real(sp)::dm_model,dm_model2,dm_best,lat,lon,maxflux(1),redshift,minmass,minmass_cone
-  real(sp)::dim,lum_threshold,theta_high,theta_low,sin_i,logs,alpha_low
+  real(sp)::dim,lum_threshold,theta_high,theta_low,sin_i,cos_i,logs,alpha_low
   real(sp)::alpha_high,minfreq,norm_f,dlogl,col,b,a,arg1,arg2,th,freq_norm
   real(sp)::minm(Nmbins),maxm(Nmbins),mc(1),halfmax(1),mw(1),sg_m(1)
   real(sp),parameter::sigma_alpha=2.35660,mean_alpha=0.609847 
@@ -1223,8 +1223,11 @@ program sampler
            ! Convert intrinsic size to projected angular size
            ! taking into account view angle and redshift
            do i=1,Nsample
-              sin_i=ran_mwc(iseed)*(theta_high-theta_low)+theta_low
-              angles(i)=asin(sin_i)
+            !  sin_i=ran_mwc(iseed)*(theta_high-theta_low)+theta_low
+              cos_i=ran_mwc(iseed)*(theta_high-theta_low)+theta_low !uniform distribution
+              !angles(i)=asin(sin_i)
+              angles(i)=acos(cos_i)
+              sin_i=sin(angles(i))
               z_i=dble(z_gals(i))
               dim=sizes_3d(i)*sin_i/1000. ! size in Mpc corrected for view angle
               sizes(i)=theta(dim,z_i)     ! angular size
@@ -1772,11 +1775,13 @@ program sampler
            !vectors for polarization model
            allocate(Polaflux(Nfreq,Nsample),inclinations(Nsample)) !polarized flux and view angle 
 
-           ! generating view angle with sin(i) distribution
+           ! generating view angle with sin(i)di distribution
            do i=1,Nsample
-              sin_i=ran_mwc(iseed)
-              inclinations(i)=asin(sin_i)*180./pi
-           enddo
+              !sin_i=ran_mwc(iseed)
+              !inclinations(i)=asin(sin_i)*180./pi
+              cos_i=ran_mwc(iseed)
+              inclinations(i)=acos(cos_i)*180./pi
+           Enddo
 
            ! polarized flux
            call pola_SFGS(inclinations,frequencies,radioflux,polaflux)
