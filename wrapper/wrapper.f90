@@ -30,7 +30,7 @@ program wrapper
   character(LEN=filenamelen),allocatable::catfiles(:)
   character*16,allocatable::tagnames(:),tform(:),tunit(:)
   character*16::tagname
-  character*16::lat_tag,lon_tag,x_tag,y_tag
+  character*16::lat_tag,lon_tag,x_tag,y_tag,x_tag_1,y_tag_1
   real(sp),allocatable::data(:,:),column(:)
   real(sp)::sim_area
   real(dp)::v(3),v0(3),v_diff(3),v_new(3)
@@ -42,7 +42,7 @@ program wrapper
   CHARACTER(LEN=80)::line
   integer(I4B) :: nest,test(1)
   integer(I8B):: Nrows
-  integer::Nfiles,i,Ncols,iostat,l,ii,l_tagname,i_lat,i_lon,i_x,i_y
+  integer::Nfiles,i,Ncols,iostat,l,ii,l_tagname,i_lat,i_lon,i_x,i_y,i_x1,i_y1
   integer status,unit,rows,nrows_i,readwrite,blocksize,hdutype,tfields
   integer::bitpix,naxis,naxes ,jj,do_clustering
   integer(I4B), dimension(:),  allocatable :: listpix,listpix_copy(:)
@@ -211,13 +211,21 @@ program wrapper
      lon_tag='longitude'
      x_tag='x_coord'
      y_tag='y_coord'
+     x_tag_1='x_coord_1'
+     y_tag_1='y_coord_1'
+     i_x1=-1
      do ii=1,Ncols
         tagname=tagnames(ii)
         if (tagname ==lat_tag) i_lat=ii
         if (tagname ==lon_tag) i_lon=ii
         if (tagname ==x_tag) i_x=ii
         if (tagname ==y_tag) i_y=ii
+        if (tagname ==x_tag_1) i_x1=ii
+        if (tagname ==y_tag_1) i_y1=ii
      enddo
+     if (i_x1 /=-1) print*,'Second set of coordinates found'
+
+
 
      tform(i_lat)='1D'
      tform(i_lon)='1D'
@@ -331,12 +339,19 @@ program wrapper
         felem=1
         do ii=1,nfiles
            print*,'copying catalogue',catfiles(ii)
+
            call rows_catalogue(catfiles(ii),Ncols,nrows_i,tagnames,tunit)
+
            allocate(data(nrows_i,Ncols),column(nrows_i))
+
            call read_catalogue(catfiles(ii),Ncols,Nrows_i,data)
 
            ! project coordinates on sphere and rotate to the chosen position
            do jj=1,nrows_i
+              if (data(jj,i_x)==-100.) then ! this is a crossmatched catalogue, Use the recond set of coordinates
+                 data(jj,i_x)=data(jj,i_x1) 
+                 data(jj,i_y)=data(jj,i_y1) 
+              endif
               lat=dble(data(jj,i_y))
               lon=dble(data(jj,i_x))  
               lat_astro=lat+lat_target

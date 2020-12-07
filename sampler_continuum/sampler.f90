@@ -639,7 +639,7 @@ program sampler
         !reading done
 
         Nsample_old=0
-        do ii=1,3 !loop on AGN populations  
+        do ii=1,3 !loop on AGN populations  FSRQ, BL-LAC, SS
            ! information for limiting ram usage
            ! processing long files in chuncks of lenght buffer_size
            buffer_size=1000
@@ -886,7 +886,7 @@ program sampler
            !todo:change
            himass(:)=0.
            optclass(:)=1 ! elliptical
-
+           if (ii==2) optclass(:)=2 ! BL-LAc have a spiral host
            ! size and view angle from precomputed distributions
            spot_dist(:)=0. !Distance between two bright posts! 
            !initialised to 0 because BLLAC and FSRQ will not have two lobes
@@ -1199,8 +1199,8 @@ program sampler
            catout(2*nfreq_out+14,jstart:jstart+Nsample-1)=-100.       !bmin (host)
            catout(2*nfreq_out+15,jstart:jstart+Nsample-1)=-100.       !PA (of the host)
            catout(2*nfreq_out+16,jstart:jstart+Nsample-1)=spot_dist   ! distance between bright spots (Rs)
-           catout(2*nfreq_out+17,jstart:jstart+Nsample-1)=ii+3        ! flag to identify population
-           catout(2*nfreq_out+18,jstart:jstart+Nsample-1)=optclass        ! flag to identify optical 
+           catout(2*nfreq_out+17,jstart:jstart+Nsample-1)=ii+3        ! flag to identify population (FSRQ, BL-LAc, SS)
+           catout(2*nfreq_out+18,jstart:jstart+Nsample-1)=optclass        ! flag to identify optical 1 elliptical, 2 spiral
 
 
            ! compute intrinsic luminosities and store them in the catalogue if requested

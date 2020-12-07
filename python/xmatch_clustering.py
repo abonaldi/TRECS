@@ -38,21 +38,58 @@ print(zmin,zmax)
 #path='/home/a.bonaldi/local2/scratch/Bonaldi/Radio_srccnt/TESTS_newtrecs/SDC2/test4/Hi/'
 #tag='HI'
 
-path='/home/a.bonaldi/local2/scratch/Bonaldi/Radio_srccnt/TESTS_newtrecs/SDC2/test4/cross/'
+#fov=1. # this is the size I want for the final crossmatched product. it could be smaller than all catalogues
+
+fov=4.9
+path='/home/a.bonaldi/SDC2/TRECS_outputs/sdc2_fullcube2/cross/'
 tag='X'
 sim_side=5.4
-
+#x_shift=-1.
+#y_shift=-1.
+x_shift=0.1
+y_shift=0.1
 
 path_dm='/data/home/a.bonaldi/local2/scratch/Bonaldi/Radio_srccnt/cones_fits/v2/'
 sim_side_dm=5.
+#x_shift_dm=-1. #displacement between centre of lightcone and centre of FoV
+#y_shift_dm=-1.
+x_shift=0.05
+y_shift=0.05
 
-path_out='/home/a.bonaldi/local2/scratch/Bonaldi/Radio_srccnt/TESTS_newtrecs/SDC2/test4/cross_clustering/'
+path_out='/home/a.bonaldi/SDC2/TRECS_outputs/sdc2_fullcube2/full_cross_clustering/'
+
+
 
 ####end general settings
 
 
 halfside_dm=sim_side_dm/2.
 halfside=sim_side/2.
+
+# if we simulated a smaller FoV than the dm cone, we select just a portion of the cone
+if (halfside_dm > fov/2.):
+    halfside_dm=fov/2.
+
+if (halfside > fov/2.):
+    halfside=fov/2.
+
+#check that the shift does not go outside the catalogue areas
+if (halfside_dm+np.abs(x_shift_dm) > sim_side_dm/2.):
+    print('Shift on x for DM cat too big')
+    exit()
+
+if (halfside_dm+np.abs(y_shift_dm) > sim_side_dm/2.):
+    print('Shift on y for DM cat too big')
+    exit()
+
+if (halfside+np.abs(x_shift) > sim_side/2.):
+    print('Shift on x for cat too big')
+    exit()
+
+if (halfside+np.abs(y_shift) > sim_side/2.):
+    print('Shift on y for cat too big')
+    exit()
+
 
 redshift_names=['0.01','0.02','0.05','0.10','0.15','0.20','0.25','0.30','0.35','0.40','0.45','0.50','0.55','0.60','0.65','0.70','0.75','0.80','0.85','0.90','0.95','1.00','1.20','1.40','1.60','1.80','2.00','2.20','2.40','2.60','2.80','3.00','3.20','3.40','3.60','3.80','4.00','4.20','4.40','4.60','4.80','5.00','5.20','5.40','5.60','5.80','6.00','6.20','6.40','6.60','6.80','7.00','7.20','7.40','7.60','7.80','8.00','8.20','8.40','8.60','8.80','9.00','9.20','9.40','9.60','9.80','10.0']
 
@@ -68,40 +105,58 @@ for i in range(len(redshift_names)):
         cat_name1 = path+'catalogue_'+tag+'_z'+z+'.fits'
         cat1 = Table.read(cat_name1, format='fits')
         cat_fits1 = fits.open(cat_name1)
-        #cat1 = cat_fits1[1].data
         cols1 = cat_fits1[1].columns.names
 
-        #check if there is Mh - if not return error message
 
-       
-        #print(cols1)
-
-
-
-        cat_name2 = path_dm+'catalogue_DM_z'+z+'.fits'
-        cat2 = Table.read(cat_name2, format='fits')
-        #cat_fits2 = fits.open(cat_name2)
-        #cat2 = cat_fits2[1].data
-        #cols2 = cat_fits2[1].columns.names
-
-        cat_name1_out = path_out+'catalogue_'+tag+'_z'+z+'.fits' 
-       
-        M1 = cat1['Mh']
-        print(np.min(M1),np.max(M1))
-
-        #to deal with cross catalogues, Mh field could be flagged.  
+        
+        #If cat1 is a crossmatch, there is a double set of masses and coordinates that I need to merge
         crosscat=0
         for k in range(len(cols1)):
             if (cols1[k] == 'Mh_1'): 
                 crosscat=1 #this is a cross catalogue
 
-        if (crosscat==1):        
+        
+
+        
+        if (crosscat==1):
+            M1=cat1['Mh']
             M1_bis = cat1['Mh_1']
             M1[M1==-100]=M1_bis[M1==-100.]
+            cat1['Mh']=M1
 
-        print(np.min(M1),np.max(M1))
+            x1=cat1['x_coord']
+            x1_bis = cat1['x_coord_1']
+            x1[x1==-100]=x1_bis[x1==-100.]
+            cat1['x_coord']=x1
 
-        #exit()
+            y1=cat1['y_coord']
+            y1_bis = cat1['y_coord_1']
+            y1[y1==-100]=y1_bis[y1==-100.]
+            cat1['y_coord']=y1
+            
+            z1=cat1['redshift']
+            z1_bis = cat1['redshift_1']
+            z1[z1==-100]=z1_bis[z1==-100.]
+            cat1['redshift']=z1
+
+
+        #select FoV only
+        cat1=cat1[(np.abs(cat1['x_coord']+x_shift) <= halfside)*(np.abs(cat1['y_coord']+y_shift) <= halfside)]     
+
+        
+        cat_name2 = path_dm+'catalogue_DM_z'+z+'.fits'
+        cat2 = Table.read(cat_name2, format='fits')
+
+        #here select only the portion of the catalogue that we need
+        cat2=cat2[(np.abs(cat2['x_coord']+x_shift_dm) <= halfside_dm)*(np.abs(cat2['y_coord']+y_shift_dm) <= halfside_dm)] 
+
+
+        cat_name1_out = path_out+'catalogue_'+tag+'_z'+z+'.fits' 
+       
+
+        #start reading catalogue values
+
+        M1 = cat1['Mh']
         M2 = cat2['Mh']
         rho2=cat2['N_2Mpc^3'] #local DM density
 
@@ -114,25 +169,24 @@ for i in range(len(redshift_names)):
         attr1=np.array([M1]).T
         attr2=np.array([M2]).T
 
-        lat1=cat1['y_coord']        #coordinates to be updated
-        lon1=cat1['x_coord']        ### (default in case of no match)
+        lat1=cat1['y_coord']+y_shift        #coordinates to be updated
+        lon1=cat1['x_coord']+x_shift        ### (default in case of no match)
         redshift1=cat1['redshift']
         
-        if (crosscat==1):        
-            lat1_bis = cat1['y_coord_1']
-            lat1[lat1==-100]=lat1_bis[lat1==-100.]
-            lon1_bis = cat1['x_coord_1']
-            lon1[lon1==-100]=lon1_bis[lon1==-100.]
+        print('Cat1 selected coordinates')
+        print(np.min(lon1),np.max(lon1))
+        print(np.min(lat1),np.max(lat1))
+        
 
-            redshift1_bis = cat1['redshift_1']
-            redshift1[redshift1==-100]=redshift1_bis[redshift1==-100.]
-
-
-
-        lat2=cat2['y_coord']        # halo coordinates
-        lon2=cat2['x_coord']
+        lat2=cat2['y_coord']+y_shift_dm        # halo coordinates
+        lon2=cat2['x_coord']+x_shift_dm
+        print('Cat2 selected coordinates')
+        print(np.min(lat2),np.max(lat2))
+        print(np.min(lon2),np.max(lon2))
+        
         redshift2=cat2['redshift']
 
+        
         print('number of galaxies',ngals)
         print('number of DM haloes',nhaloes)
 

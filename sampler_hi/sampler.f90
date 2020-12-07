@@ -59,7 +59,7 @@ program sampler
   real(sp),allocatable::MHItab(:),Mhalotab(:)
 
 !!$  !double precision variables
-  real(dp)::sim_area,skyfrac
+  real(dp)::sim_area,skyfrac,d_l
   real(dp)::sim_side
   real(dp),allocatable::data(:,:),x(:),px(:)
   real(dp)::Ngen_db,norm
@@ -114,8 +114,8 @@ program sampler
   sim_side = parse_double(handle, 'sim_side', default=5.d0, vmin=0.d0, descr=description)
 
   description = concatnl( &
-       & " Enter the flux limit [Jy]: ")
-  fluxlim = parse_double(handle, 'fluxlim', default=10.d-9, descr=description)
+       & " Enter the flux limit [Jy Hz]: ")
+  fluxlim = parse_double(handle, 'fluxlim', default=1.d0, descr=description)
 
   description = concatnl( &
        & " Enter the minimum redhift to consider: ")
@@ -123,7 +123,7 @@ program sampler
 
   description = concatnl( &
        & " Enter the maximum redshift to consider: ")
-  z_max = parse_real(handle, 'z_max', default=0.3, vmin=0., descr=description)
+  z_max = parse_real(handle, 'z_max', default=0.5, vmin=0., descr=description)
 
   description = concatnl( &
        & " Enter the name of the the output file directory:")
@@ -178,7 +178,7 @@ program sampler
   tunit(j)='log(Msun)'
   j=j+1
   tagnames(j)='HI flux'
-  tunit(j)='mJy'
+  tunit(j)='mJy Hz'
   j=j+1
   tagnames(j)='Mh'
   tunit(j)='log(Msun)'
@@ -223,7 +223,7 @@ program sampler
 
   tform(:)='1E'
 
-  nreds=8 !HI galaxies up to z=0.3 only!!!
+  nreds=12 !HI galaxies up to z=0.5 only
   nreds_out=nreds
 
   allocate(redshifts(nreds),redshift_names(nreds))
@@ -253,15 +253,14 @@ program sampler
   ! main redshift loop
   do zi=1,nreds_out-1
      z=redshifts(zi)
-     !d_l=lumr(z)!angular diameter distance of the centre of the slice (Mpc)
-     !flux_conv=(d_l**(-2.))/49.8 ! conversion from HI mass to flux (Jy/hz) Duffy et al. (2012)
+
+
      if ((z_min <= z) .and. (z_max >= z)) then    ! redshift slice with center z is processed
 
-
-
-
-        d_a=da(z)*h  ! angular diameter distance Mpc
-        flux_conv=d_a**(-2)/2.36e5
+        d_l=lumr(dble(z))!angular diameter distance of the centre of the slice (Mpc)
+        !d_a=da(z)*h  ! angular diameter distance Mpc
+        !flux_conv=d_a**(-2)/2.36e5
+        flux_conv=d_l**(-2.)/49.8 !Duffy et al. (2012)
         masslim=log10(fluxlim/flux_conv)
         print*,'masslim=',masslim
         !stop
@@ -377,11 +376,11 @@ program sampler
 
 
                  zall_slice(j)=ran_mwc(iseed)*(zhigh-zlow)+zlow
-                 d_a=da(dble(zall_slice(j)))*h  ! angular diameter distance Mpc
-                 flux_conv=d_a**(-2)/2.36e5
-
-
-                 fluxes_slice(j)=flux_conv*(10.**samplex_slice(j)) ! flux in mJy
+                 !d_a=da(dble(zall_slice(j)))*h  ! angular diameter distance Mpc
+                 !flux_conv=d_a**(-2)/2.36e5
+                 d_l=lumr(dble(zall_slice(j))) ! luminosity distance MPc
+                 flux_conv=d_l**(-2.)/49.8 !Jy/Hz
+                 fluxes_slice(j)=flux_conv*(10.**samplex_slice(j)) ! flux in Jy/Hz
                  !print*,samplex_slice(j),zall_slice(j),flux
                  !if (samplex_slice(j)>= masslim) Nsample_surv= Nsample_surv+1  ! implement flux threshold
                  if (fluxes_slice(j)>= fluxlim) Nsample_surv= Nsample_surv+1  ! implement flux threshold
@@ -591,7 +590,7 @@ program sampler
         endif
 
         catout(1,:)=samplex(1:Nsample)       ! HI mass
-        catout(2,:)=fluxes
+        catout(2,:)=fluxes*1000. ! HI flux mJy/Hz
         catout(3,:)=darkmass       
         catout(4,:)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
         catout(5,:)=longitudes
