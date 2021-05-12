@@ -169,7 +169,7 @@ program sampler
 
 
   !structure of the catalogue
-  Ncat_hi=15 ! hi mass, darm mass, latitude, longitude
+  Ncat_hi=15 ! hi mass, dark mass, latitude, longitude
 
   !creating tag names for the catalogue
   allocate(tagnames(Ncat_hi),tunit(Ncat_hi),tform(Ncat_hi))
@@ -239,6 +239,8 @@ program sampler
        ,'5.20','5.40','5.60','5.80','6.00','6.20','6.40','6.60','6.80','7.00','7.20','7.40','7.60','7.80','8.00',&
        '8.20','8.40','8.60','8.80','9.00','9.20','9.40','9.60','9.80','10.0'/)
 
+
+!count how many redshift bins within the range
   if (zmax < maxval(redshifts)) then
      nreds_out=0
      i=1
@@ -258,12 +260,10 @@ program sampler
      if ((z_min <= z) .and. (z_max >= z)) then    ! redshift slice with center z is processed
 
         d_l=lumr(dble(z))!angular diameter distance of the centre of the slice (Mpc)
-        !d_a=da(z)*h  ! angular diameter distance Mpc
-        !flux_conv=d_a**(-2)/2.36e5
         flux_conv=d_l**(-2.)/49.8 !Duffy et al. (2012)
-        masslim=log10(fluxlim/flux_conv)
-        print*,'masslim=',masslim
-        !stop
+        masslim=log10(fluxlim/flux_conv) ! mass limit corresponding to the flux limit specified
+        print*,'Mass limit =',masslim
+        
 
 
         !getting the size of the redshift slice
@@ -285,6 +285,7 @@ program sampler
         volumetot=4.*pi/3.*(r(zhigh)**3-r(zlow)**3)
         volume=volumetot*skyfrac  !volume corresponding to FoV
         print*,'volume=',volume
+
         !relation between L14 and mass of dark halo, from abundance matching
         ! reading from a file
 
@@ -305,9 +306,6 @@ program sampler
 
 
         Nsample_old=0
-        ! do ii=1,3 !loop on SFR populations  
-        ! information for limiting ram usage
-        ! processing long files in chuncks of lenght buffer_size
         buffer_size=1000
         buffer_free=buffer_size
         jbuf=0 ! index to fill buffer 
@@ -326,6 +324,7 @@ program sampler
         if (iostat /= 0.) then 
            print*,'deallocation error poisson numbers!'
         endif
+
         ! Poisson sampling to get number of object per SFR bin from the PDF
         do i=1,N
            mu=real(Px(i)*norm)
@@ -334,10 +333,12 @@ program sampler
         enddo
         Nsample=sum(poisson_numbers) ! this is the number of galaxies to be generated
 
+        !Nothing to be done if there are no galaxies
         if (Nsample==0) then
            deallocate(poisson_numbers)
            goto 500
         endif
+
         if (Nsample < buffer_size) buffer_size=Nsample
 
         allocate(samplex(buffer_size),z_gals(buffer_size),fluxes(buffer_size)) 
@@ -376,19 +377,12 @@ program sampler
 
 
                  zall_slice(j)=ran_mwc(iseed)*(zhigh-zlow)+zlow
-                 !d_a=da(dble(zall_slice(j)))*h  ! angular diameter distance Mpc
-                 !flux_conv=d_a**(-2)/2.36e5
+               
                  d_l=lumr(dble(zall_slice(j))) ! luminosity distance MPc
                  flux_conv=d_l**(-2.)/49.8 !Jy/Hz
                  fluxes_slice(j)=flux_conv*(10.**samplex_slice(j)) ! flux in Jy/Hz
-                 !print*,samplex_slice(j),zall_slice(j),flux
-                 !if (samplex_slice(j)>= masslim) Nsample_surv= Nsample_surv+1  ! implement flux threshold
                  if (fluxes_slice(j)>= fluxlim) Nsample_surv= Nsample_surv+1  ! implement flux threshold
               enddo
-!stop
-              !stop
-              !              print*,'Number of galaxies above flux limit',Nsample_surv
-
 
               if (buffer_free < Nsample_surv) then 
                  ! expand buffer
@@ -404,7 +398,7 @@ program sampler
                  zall_copy=z_gals
                  fluxes_copy=fluxes
 
-                deallocate(samplex,z_gals,fluxes)
+                 deallocate(samplex,z_gals,fluxes)
                  allocate(samplex(buffer_size),z_gals(buffer_size),fluxes(buffer_size))
                  samplex(1:buffer_size_old)=samplex_copy(:)
                  z_gals(1:buffer_size_old)=zall_copy(:)
@@ -425,12 +419,6 @@ program sampler
                     fluxes(jbuf)=fluxes_slice(j)
                  endif
               enddo
-!!$              do j=1,Nran
-!!$                 if (samplex_slice(j)>= masslim) then
-!!$                    jbuf=jbuf+1
-!!$                    samplex(jbuf)=samplex_slice(j)
-!!$                 endif
-!!$              enddo
               buffer_free=buffer_size-jbuf
 
               deallocate(samplex_slice,zall_slice,fluxes_slice)
@@ -444,11 +432,13 @@ program sampler
 
         Nsample=buffer_size-buffer_free
         print*,'Number of galaxies above flux limit',Nsample
+
         if (Nsample==0) then
            !skip resize and output catalogue if no object is found
            deallocate(samplex,z_gals,fluxes,x,px,data)
            goto 500 
         endif
+
         ! resize Radioflux to the final sample size
         if (buffer_free /=0) then
            print*,'resize final catalogue' 
@@ -482,18 +472,8 @@ program sampler
            endif
         endif
 
-        !           print*,radioflux(ilim,:)
-        !           stop
+
         print*,'MHIs generated'
-        !stop
-        !vectors for polarization model
-!!$        allocate(inclinations(Nsample)) !polarized flux and view angle 
-!!$
-!!$        ! generating view angle with sin(i) distribution
-!!$        do i=1,Nsample
-!!$           sin_i=ran_mwc(iseed)
-!!$           inclinations(i)=asin(sin_i)*180./pi
-!!$        enddo
 
         ! compute halo mass from sfr 
         allocate(Darkmass(Nsample),latitudes(Nsample),&
@@ -532,17 +512,12 @@ program sampler
 
 
 
-        !print*,'--'
+
         do i=1,Nsample
            dm_model=interpol(samplex(i),MHItab,Mhalotab,Nfunction)
-           !              satellite_flag(i)=dm_model/darkmass_halo(i) ! galaxy/halo mass ratio
            Darkmass(i)=dm_model ! halo mass to associate with BGC instead of satellite         
-           !              satellite_flag(i)=dm_model/darkmass_halo(i) ! galaxy/halo mass ra!tio  
-           !              if (dm_model >=minmass_cone) satellite_flag(i)=0 ! only galaxies with mass smaller that minimum halo mass in the lightcone are kept as satellites
 
-           !print*,samplex(i),dm_model
-
-           latitudes(i)=(ran_mwc(iseed)-0.5)*sim_side
+           latitudes(i)=(ran_mwc(iseed)-0.5)*sim_side  ! random coordinates
            longitudes(i)=(ran_mwc(iseed)-0.5)*sim_side
            z_i=dble(z_gals(i))
 
@@ -556,9 +531,6 @@ program sampler
 
            !TODO: change this 
 
-           !inclinations
-           !sin_i=ran_mwc(iseed)
-           !inclinations(i)=asin(sin_i)*180./pi
            cos_i=ran_mwc(iseed)
            inclinations(i)=acos(cos_i)*180./pi
            !the HI size is smaller than the radio size computed from here, but this could be due to the DM mass  modelled here. check after xmatch. 
@@ -576,7 +548,7 @@ program sampler
 !then I use b=q*a  and solve for a
 
            bmin(i)=q*bmaj(i)     ! apparent bmin
-           pa(i)=ran_mwc(iseed)*360. !PA in degs
+           pa(i)=ran_mwc(iseed)*360. !random PA in degs
         enddo
 
         !preparing to output the data in catalogue format

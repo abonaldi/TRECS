@@ -2,8 +2,9 @@
 # overwrites the sky coordinates (x_coord, y_coord, redshift) of galaxies with those of a lightcone of a cosmological simulation, thus reproducing clustering
 # matching galaxies between the DM catalogue and the observed catalogue based on DM halo mass
 # use nearest neighbours for associating mass
-# option to use local density as well to introduce environmental dependencies. 
-
+# if HI is present, use local density as well to introduce environmental dependencies (HI tends to avoid high local density)
+# 31/3/21
+# to improve speed, only around 1000 haloes per galaxy in the same mass bin are retained in the DM catalogue.  
 
 
 
@@ -41,7 +42,7 @@ print(zmin,zmax)
 #fov=1. # this is the size I want for the final crossmatched product. it could be smaller than all catalogues
 
 fov=4.9
-path='/home/a.bonaldi/SDC2/TRECS_outputs/sdc2_fullcube2/cross/'
+path='/home/a.bonaldi/data-cold-for-backup/SDC2/TRECS_outputs/sdc2_fullcube2/cross/'
 tag='X'
 sim_side=5.4
 #x_shift=-1.
@@ -49,14 +50,15 @@ sim_side=5.4
 x_shift=0.1
 y_shift=0.1
 
-path_dm='/data/home/a.bonaldi/local2/scratch/Bonaldi/Radio_srccnt/cones_fits/v2/'
+path_dm='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/cones_fits/v2/'
 sim_side_dm=5.
 #x_shift_dm=-1. #displacement between centre of lightcone and centre of FoV
 #y_shift_dm=-1.
-x_shift=0.05
-y_shift=0.05
+x_shift_dm=0.05
+y_shift_dm=0.05
 
-path_out='/home/a.bonaldi/SDC2/TRECS_outputs/sdc2_fullcube2/full_cross_clustering/'
+#path_out='/home/a.bonaldi/SDC2/TRECS_outputs/sdc2_fullcube2/full_cross_clustering/'
+path_out='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/tests_2021'
 
 
 
@@ -150,7 +152,7 @@ for i in range(len(redshift_names)):
         #here select only the portion of the catalogue that we need
         cat2=cat2[(np.abs(cat2['x_coord']+x_shift_dm) <= halfside_dm)*(np.abs(cat2['y_coord']+y_shift_dm) <= halfside_dm)] 
 
-
+       
         cat_name1_out = path_out+'catalogue_'+tag+'_z'+z+'.fits' 
        
 
@@ -158,16 +160,78 @@ for i in range(len(redshift_names)):
 
         M1 = cat1['Mh']
         M2 = cat2['Mh']
-        rho2=cat2['N_2Mpc^3'] #local DM density
+        
 
         #check if there is HI and if so read the MHI column
-      
+        print(len(cat2))
+        #here I could take a portion of the DM catalogue for low masses to speed-up things 
 
+        #apply a mass cut
+        minmass=np.min(M1) #this is the minimum mass to be matched, decreased to be conservative
+        cat2=cat2[cat2['Mh'] >= minmass]
+        M2 = cat2['Mh']
+        rho2=cat2['N_2Mpc^3'] #local DM density
+
+        #apply thinning of DM catalogue to speed-up the process
+        
+        #histogram of M1 and M2 to see and work out ratio between galaxies and eligible haloes
+        maxmass=np.max((np.max(M1),np.max(M2)))
+        nbins=50
+        d_m1=np.histogram(M1,range=(minmass,maxmass),bins=nbins)
+        d_m2=np.histogram(M2,range=(minmass,maxmass),bins=nbins)
+
+#       TODO: avoid the case where d_m1=0
+        ratio=(d_m2[0]/d_m1[0]) #this is how many dark haloes per observable galaxy as a finction of mass
+        binning=d_m2[1]
+
+
+        thr=np.zeros(len(ratio))+1.
+        thr[(ratio>1.)]=1./ratio[ratio>1.]*1000.
+
+        #print('prima')
+        #print(ratio)
+       
+        select=np.zeros(len(M2)) #vector to record the portion of the catalogue to keep for crossmatching
+        rnd=np.random.uniform(low=0, high=1, size=len(M2))
+        
+       
+        for k in range(len(M2)):
+            value=M2[k]
+            idx = (np.abs(binning - value)).argmin()
+            if (idx>=nbins):
+                idx=nbins-1
+
+            if (rnd[k]<=thr[idx]):
+                select[k]=1.
+            
+            
+        cat2=cat2[select == 1.]
+        M2 = cat2['Mh']
+        rho2=cat2['N_2Mpc^3'] #local DM density
+
+        print(np.sum(select),len(cat2))
+        #exit()
+
+        
+        #apply thinning of DM catalogue to speed-up the process
+        
+        #histogram of M1 and M2 to see and work out ratio between galaxies and eligible haloes
+       
+        #nbins=50
+        #d_m1=np.histogram(M1,range=(minmass,maxmass),bins=nbins)
+        #d_m2=np.histogram(M2,range=(minmass,maxmass),bins=nbins)
+
+        #ratio=(d_m2[0]/d_m1[0])
+        #print('dopo')
+        #print(ratio)
+        #exit()
+        
+        
         ngals=len(M1)
         nhaloes=len(M2)
 
-        attr1=np.array([M1]).T
-        attr2=np.array([M2]).T
+        attr1=np.array([M1]).T   #observed catalogue
+        attr2=np.array([M2]).T   #lightcone
 
         lat1=cat1['y_coord']+y_shift        #coordinates to be updated
         lon1=cat1['x_coord']+x_shift        ### (default in case of no match)
@@ -208,11 +272,14 @@ for i in range(len(redshift_names)):
 
         #exit()
 
+
         ###### ANALYSIS STARTS
+        print('Start nearest neighbour')
         nsample=10 #number of nearest neighbour considered for matching
         nbrs = NearestNeighbors(n_neighbors=nsample, algorithm='kd_tree').fit(attr2)
         distances, indices = nbrs.kneighbors(attr1)
-
+        print('Neaerst neighbour done')
+        
         print('number of matches',indices.shape)
         
         #print(M1[0])
@@ -227,7 +294,7 @@ for i in range(len(redshift_names)):
         #sort to match high mass first - more rare and difficult to match
         # go trough suggested matches and assign 
         
-        indices_sortM1=np.flip(np.argsort(M1)) # indices for masses from largest to smallest
+        indices_sortM1=np.flip(np.argsort(M1)) # indices for observed masses from largest to smallest
         
 
         for k in range(ngals):

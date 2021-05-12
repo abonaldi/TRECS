@@ -3,11 +3,11 @@
 F90 = gfortran
 CC = cc
 F90FLAGS = -O3 
-I_CFITSIO =  -I/home/a.bonaldi/software/cfitsio/include/
-L_CFITSIO =  -L/home/a.bonaldi/software/cfitsio/lib -lcfitsio
-I_HEALPIX = -I/home/a.bonaldi/software/Healpix_3.31/include/
-I_SAMPLER = -I../sampler/
-L_HEALPIX =  -L/home/a.bonaldi/software/Healpix_3.31/lib -lhealpix -lgif
+I_CFITSIO =  -I/home/a.bonaldi/data-cold-for-backup/software/cfitsio/include/
+L_CFITSIO =  -L/home/a.bonaldi/data-cold-for-backup/software/cfitsio/lib -lcfitsio
+I_HEALPIX = -I/home/a.bonaldi/data-cold-for-backup/software/Healpix_3.31/include/
+I_SAMPLER = -I../sampler_continuum/
+L_HEALPIX =  -L/home/a.bonaldi/data-cold-for-backup/software/Healpix_3.31/lib -lhealpix -lgif
 LDFLAGS = 
 INCLUDE := $(I_HEALPIX)  $(I_CFITSIO) $(I_SAMPLER)
 LINK := $(LINK) $(L_HEALPIX) $(L_CFITSIO) $(LDFLAGS) 

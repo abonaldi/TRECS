@@ -852,7 +852,7 @@ end subroutine pola_SFGS
 
 
   ! functions to compute radio luminosity from SFR 
-! synchrotron emission
+  ! synchrotron emission
 subroutine Lsynch(nu,sfr,L)
     implicit none
     ! synchrotron luminosity for one galaxy at several frequencies
@@ -860,8 +860,16 @@ subroutine Lsynch(nu,sfr,L)
     real(dp),intent(in)::nu(:),sfr
     real(dp),parameter::normstar=1.68e28,norm=1.9e28,beta=3
 
+
+    !Mancuso et al. 2015 eq 3
     L=(nu/1000.)**(-0.85)*(1.+(nu/20000.)**0.5)**(-1.) !common part in L and Lstar
 
+    print*,L
+    L=(nu/1400.)**(-0.85-0.07*log(nu/1400.)) !curved spectrum consistent with Mancuso at nu>1.4
+
+    print*,L
+
+    stop
     L=L*normstar/((normstar/norm/sfr)**beta+(normstar/norm/sfr))  ! erg/s/Hz
 
   end subroutine Lsynch
