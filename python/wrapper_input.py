@@ -7,23 +7,22 @@ import os
 import glob
 import astropy
 
-def collate_sfgs(folder1,folder2,lat_target,lon_target,sim_side,do_clustering,tag):
+
+def collate(folder1,folder2,lat_target,lon_target,sim_side,do_clustering,tag):
     
 
     from astropy.io import fits
-    file=folder2+'/catalogue_SFGs_complete_'+tag+'.fits'
+    file=folder2+'/catalogue_complete_'+tag+'.fits'
 
     try:
         os.system('rm '+file)
     except OSError:
         pass
 
-    results0=glob.glob(folder1+'/*UVgal.fits')
-    results1=glob.glob(folder1+'/*spheroids.fits')
-    results2=glob.glob(folder1+'/*lens_spher.fits')
+    results0=glob.glob(folder1+'/*.fits')
 
-    results=results0+results1+results2
-
+    results=results0
+    
 
     hdul=fits.open(results[0])
     Ncols = int(hdul[1].header['TFIELDS']) 
@@ -32,7 +31,7 @@ def collate_sfgs(folder1,folder2,lat_target,lon_target,sim_side,do_clustering,ta
     print('Ncols',Ncols)
     print('Nfiles',nfiles)
 
-    input_file = open('infile_wrapper_SFGs_'+tag+'.ini','w')
+    input_file = open('infile_wrapper_'+tag+'.ini','w')
     input_file.write('Nfiles=%i\n'%(nfiles))
     input_file.write('Ncols=%i\n'%(Ncols))
     input_file.write('lat_target=%f\n'%(lat_target))
@@ -50,76 +49,37 @@ def collate_sfgs(folder1,folder2,lat_target,lon_target,sim_side,do_clustering,ta
 
 
 
-def collate_agns(folder1,folder2,lat_target,lon_target,sim_side,do_clustering,tag):
 
-    from astropy.io import fits
-    file=folder2+'/catalogue_AGNs_complete_'+tag+'.fits'
-    
-    try:
-        os.system('rm '+file)
-    except OSError:
-        pass
+folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/continuum/'
+folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/'
 
-    results0=glob.glob(folder1+'/*SS_AGN.fits')
-    results1=glob.glob(folder1+'/*FSRQ.fits')
-    results2=glob.glob(folder1+'/*BLLac.fits')
-    
-    results=results0+results1+results2
+tag='continuum_15sep'
 
-    print(results[0])
+folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/hi/'
+folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/'
 
-    hdul=fits.open(results[0])
-    Ncols = int(hdul[1].header['TFIELDS'])   
-    
-    nfiles=len(results)
+tag='hi_15sep'
 
-    input_file = open('infile_wrapper_AGNs_'+tag+'.ini','w')
-    input_file.write('Nfiles=%i\n'%(nfiles))
-    input_file.write('Ncols=%i\n'%(Ncols))
-    input_file.write('lat_target=%f\n'%(lat_target))
-    input_file.write('lon_target=%f\n'%(lon_target))
-    input_file.write('sim_side=%f\n'%(sim_side))
-    input_file.write('do_clustering=%i\n'%(do_clustering))
+folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/cross_test/'
+folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/'
 
-    for i in range(nfiles):
-        input_file.write('cat%i=%s\n'%(i+1,results[i]))
-    input_file.write('outcat=%s\n'%file)
-    input_file.close()
+tag='cross_17sep'
 
 
-    return
+folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_smith/test1_new/'
+folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_smith/'
 
-#folder2='/home/a.bonaldi/data_challenges/inputs/T-RECS_cats/'
-#folder1='/home/a.bonaldi/data_challenges/inputs/T-RECS_cats/run1/'
-#tag='chall_1'
-
-folder1='/home/a.bonaldi/local2/scratch/Bonaldi/Radio_srccnt/run_WLreso'
-folder2='/home/a.bonaldi/local2/scratch/Bonaldi/Radio_srccnt/run_WLreso'
-
-tag='1650'
+tag='test1_new'
 
 
-#folder1='/home/a.bonaldi/local2/scratch/Bonaldi/Radio_srccnt/runs_LoTSS4/'
-#folder2=folder1
-#tag='wide_LoTSS'
 
 
-#lat_target=-30.
-#lon_target=0.
-
-do_clustering=1
-#sim_side=3.
-sim_side=5.
-
-#folder2='../'
-#folder1='../tests/'
-#tag='test'
-
-lat_target=0.
+lat_target=-30.
 lon_target=0.
 
-#do_clustering=1
-#sim_side=5.
+do_clustering=1
+sim_side=5
+
 
 
 try:
@@ -129,6 +89,5 @@ except OSError:
 
 
 
-#collate_agns(folder1,folder2,lat_target,lon_target,sim_side,do_clustering,tag)
-collate_sfgs(folder1,folder2,lat_target,lon_target,sim_side,do_clustering,tag)
+collate(folder1,folder2,lat_target,lon_target,sim_side,do_clustering,tag)
 

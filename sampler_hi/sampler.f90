@@ -13,7 +13,7 @@ program sampler
   USE utilities
   USE pix_tools
   USE random_tools
-  use random,only:random_poisson
+  use random,only:random_poisson,random_normal
   use sampler_io
   use trecs_mods
   use interpolations
@@ -50,7 +50,7 @@ program sampler
   !single precision variables
   real(sp)::z_min,z_max,mu,clock_time,coo_max,coo_min
   real(sp)::masslim,fluxlim,dm_model,dim,sin_i,cos_i
-  real(sp)::q,q2,d_a,flux,flux_conv
+  real(sp)::q,q2,d_a,flux,flux_conv,rn
   real(sp),allocatable::samplex(:),samplex_slice(:),samplex_copy(:),redshifts(:)
   real(sp),allocatable::zall_slice(:),zall_copy(:)
   real(sp),allocatable::catout(:,:),z_gals(:),sizes(:),fluxes(:),fluxes_slice(:),fluxes_copy(:)
@@ -68,7 +68,7 @@ program sampler
   integer::buffer_size,buffer_free,jbuf,buffer_free_old,buffer_size_old,l_outdir
   integer::Nsample_old,Nfunction,Nsample_surv,nreds_out,nreds,Ncat_HI,nrows,Ncolumns,nrows_lf,nskip,zi
   integer(4) :: ic4, crate4, cmax4!,ni,sum_plus,p14(1),i14,ilim,i48,p(1),p_i,try
-  integer::seed(34),iseed,iostat
+  integer::seed(34),iseed,iostat,seed_fix
   INTEGER, DIMENSION(8,2) :: values_time
   integer::N,Nran,i,j!,reason,iunit
   integer,allocatable::poisson_numbers(:)
@@ -129,17 +129,30 @@ program sampler
        & " Enter the name of the the output file directory:")
   outdir=  parse_string(handle, 'outdir', default='.', descr=description)
 
+
+  description = concatnl( &
+       & " Do you want to skip the AGN simulation (0=no, 1=yes)")
+  seed_fix = parse_int(handle, 'seed', default=-1, descr=description)
   ! end reading input parameters
 
 
   !'Seeding random number generators'
   !getting seed for random number generation from the clock
-  call system_clock(count=ic4, count_rate=crate4, count_max=cmax4)
-  do i=1,12
-     seed(i)=ic4*i/12.+iseed  ! combining two clock readings to fill 12 seeds
-  enddo
 
-  call random_seed(PUT=seed)  ! feeding to Poisson generator 
+  if (seed_fix ==-1) then
+     call system_clock(count=ic4, count_rate=crate4, count_max=cmax4)
+     do i=1,34
+        seed(i)=ic4*i/12.+iseed  ! combining two clock readings to fill 12 seeds
+     enddo
+  else
+     do i=1,34
+        seed(i)=1284350*i+seed_fix  ! combining two clock readings to fill 12 seeds
+     enddo
+     iseed=seed_fix
+  endif
+
+  call random_seed(PUT=seed)  ! feeding to Poisson and Gaussian generator 
+  rn=rand(iseed+807820) ! initialise random uniform generator
 
 
   !string formatting: eliminate spaces between path anf file name
@@ -218,7 +231,7 @@ program sampler
   j=j+1
   tagnames(j)='OptClass'
   tunit(j)='none'
- 
+
 
 
   tform(:)='1E'
@@ -240,7 +253,7 @@ program sampler
        '8.20','8.40','8.60','8.80','9.00','9.20','9.40','9.60','9.80','10.0'/)
 
 
-!count how many redshift bins within the range
+  !count how many redshift bins within the range
   if (zmax < maxval(redshifts)) then
      nreds_out=0
      i=1
@@ -263,7 +276,7 @@ program sampler
         flux_conv=d_l**(-2.)/49.8 !Duffy et al. (2012)
         masslim=log10(fluxlim/flux_conv) ! mass limit corresponding to the flux limit specified
         print*,'Mass limit =',masslim
-        
+
 
 
         !getting the size of the redshift slice
@@ -372,12 +385,12 @@ program sampler
               allocate(samplex_slice(Nran),zall_slice(Nran),fluxes_slice(Nran))
 
               do j=1,Nran
-                 samplex_slice(j)=ran_mwc(iseed)*(xmax-xmin)+xmin
-                 !                 samplex_slice(j)=randgauss_boxmuller(iseed)*(xmax-xmin)+xmin
+                 samplex_slice(j)=rand()*(xmax-xmin)+xmin
+                 !                 samplex_slice(j)=random_normal()*(xmax-xmin)+xmin
 
 
-                 zall_slice(j)=ran_mwc(iseed)*(zhigh-zlow)+zlow
-               
+                 zall_slice(j)=rand()*(zhigh-zlow)+zlow
+
                  d_l=lumr(dble(zall_slice(j))) ! luminosity distance MPc
                  flux_conv=d_l**(-2.)/49.8 !Jy/Hz
                  fluxes_slice(j)=flux_conv*(10.**samplex_slice(j)) ! flux in Jy/Hz
@@ -487,7 +500,7 @@ program sampler
 
 !!$
 !!$           do i=1,Nsample
-!!$              th=ran_mwc(iseed)*2.*pi*2. !2theta
+!!$              th=rand()*2.*pi*2. !2theta
 !!$              ellipticity2(i)=ellipticity1(i)*sin(th)
 !!$              ellipticity1(i)=ellipticity1(i)*cos(th)
 !!$           enddo
@@ -517,11 +530,11 @@ program sampler
            dm_model=interpol(samplex(i),MHItab,Mhalotab,Nfunction)
            Darkmass(i)=dm_model ! halo mass to associate with BGC instead of satellite         
 
-           latitudes(i)=(ran_mwc(iseed)-0.5)*sim_side  ! random coordinates
-           longitudes(i)=(ran_mwc(iseed)-0.5)*sim_side
+           latitudes(i)=(rand()-0.5)*sim_side  ! random coordinates
+           longitudes(i)=(rand()-0.5)*sim_side
            z_i=dble(z_gals(i))
 
-           dim=(0.506+randgauss_boxmuller(iseed)*0.003)*samplex(i)-3.293+randgauss_boxmuller(iseed)*0.009 !log phys size kpc , Wang et al. 2016 eq 2. 
+           dim=(0.506+random_normal()*0.003)*samplex(i)-3.293+random_normal()*0.009 !log phys size kpc , Wang et al. 2016 eq 2. 
 
            Dim=10.**dim/1000./2. !size in Mpc, radius instead of diameter
            sizes(i)=theta(dim,z_i)!*0.2 ! apparent size. 
@@ -531,24 +544,24 @@ program sampler
 
            !TODO: change this 
 
-           cos_i=ran_mwc(iseed)
+           cos_i=rand()
            inclinations(i)=acos(cos_i)*180./pi
            !the HI size is smaller than the radio size computed from here, but this could be due to the DM mass  modelled here. check after xmatch. 
 
            ! all HI galaxies have spiral morphology. start from an intrinsic axis ratio of 0.2
-           q=0.2+randgauss_boxmuller(iseed)*0.05 
+           q=0.2+random_normal()*0.05 
            q2=q**2 ! square alpha
            q=sqrt(q2+(cos(inclinations(i)))**2.*(1.-q2)) ! observed axis ratio, linked to inclination
 
            qrat(i)=q
            bmaj(i)=sqrt(sizes(i)**2./q) ! apparent bmaj
 
-! size is the circularised profile
-!pi r^2=!pi ab, where  a and b are major and minor semi-axis
-!then I use b=q*a  and solve for a
+           ! size is the circularised profile
+           !pi r^2=!pi ab, where  a and b are major and minor semi-axis
+           !then I use b=q*a  and solve for a
 
            bmin(i)=q*bmaj(i)     ! apparent bmin
-           pa(i)=ran_mwc(iseed)*360. !random PA in degs
+           pa(i)=rand()*360. !random PA in degs
         enddo
 
         !preparing to output the data in catalogue format

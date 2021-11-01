@@ -261,37 +261,6 @@ contains
 
 
 
-  !=======================================================================
-  function randgauss_boxmuller(iseed)
-    !=======================================================================
-    !     Box-Muller method for converting uniform into Gaussian deviates 
-    !=======================================================================
-    integer(I4B), intent(inout) :: iseed
-    real(SP) :: randgauss_boxmuller
-    logical(LGT), save :: empty=.true.
-    real(SP) :: fac,rsq,v1,v2
-    real(SP),save :: gset
-
-    if (empty .or. iseed < 0) then ! bug correction, EH, March 13, 2003
-1      v1=2.*ran_mwc(iseed)-1.
-       v2=2.*ran_mwc(iseed)-1.
-!!$1      v1=2.*ran1(iseed)-1.
-!!$       v2=2.*ran1(iseed)-1.
-       rsq=v1**2+v2**2
-       if(rsq.ge.1.or.rsq.eq.0.) goto 1
-       fac=sqrt(-2.*log(rsq)/rsq)
-       gset=v1*fac
-       randgauss_boxmuller=v2*fac
-       empty=.false.
-    else
-       randgauss_boxmuller=gset
-       empty=.true.
-    endif
-    return
-  end function randgauss_boxmuller
-
-
-  !=======================================================================
   function rms(vector)
 
     real(SP),intent(in):: vector(:)
@@ -316,17 +285,8 @@ contains
   end function rms
 
 
-  function ran_mwc(iseed)
-    implicit none
-    integer(I4B)::iseed
-    real(SP)::ran_mwc
 
-    ran_mwc = rand(0)
-
-    return
-  end function ran_mwc
-
-
+  
   subroutine reordersample(iseed,sample)
     !reordering a vector in a random order
     implicit none
@@ -342,7 +302,7 @@ contains
     samplecopy=sample
 
     do i=1,N
-       ordersample(i)=ran_mwc(iseed)
+       ordersample(i)=rand()
     enddo
 
 
@@ -397,7 +357,7 @@ contains
           peakval=px(i)
        endif
        do j=1,Nran
-          sample(iii)=ran_mwc(iseed)*(xmax-xmin)+xmin
+          sample(iii)=rand()*(xmax-xmin)+xmin
           Ngen=iii
           if (Ngen == Nsample) goto 249 
           iii=iii+1
@@ -410,14 +370,14 @@ contains
        xmin=x(j)-dx/2
        if (xmin < xmin_prior) xmin=xmin_prior
        if (xmax > xmax_prior) xmax=xmax_prior
-       sample(1)=ran_mwc(iseed)*(xmax-xmin)+xmin
+       sample(1)=rand()*(xmax-xmin)+xmin
        Ngen=1
     endif
 
     !filling the remaining with replicas of the sample plus small scatter
     do iii=Ngen,Nsample
-       test=nint(ran_mwc(iseed)*(ngen-1)+1)
-       sample(iii)=sample(test)+randgauss_boxmuller(iseed)*sg
+       test=nint(rand()*(ngen-1)+1)
+       sample(iii)=sample(test)+random_normal()*sg
        if (sample(iii) < xmin_prior) sample(iii)=xmin_prior
        if (sample(iii) > xmax_prior) sample(iii)=xmax_prior
     enddo
@@ -480,88 +440,6 @@ contains
 
     endif
   end subroutine histogram
-
-
-!!$  subroutine get_bins_old(data,nbins_final,binmins,binmaxs)
-!!$    ! compute bin limits to have similar number of elements in each bin
-!!$    implicit none
-!!$    real(sp)::data(:)
-!!$    real(sp),allocatable::binmaxs(:),binmins(:),binminmax_copy(:)
-!!$    real(dp),allocatable::histo(:,:)
-!!$    real(dp)::cumul,binsize
-!!$    integer::i,nbins,nbins_target,nbins_final,nsample_target(1),ii,nrows
-!!$
-!!$
-!!$    nrows=size(data)
-!!$    nbins=-1
-!!$
-!!$    call histogram(dble(data),nbins,binsize,histo) !
-!!$    nbins=nbins*10.
-!!$    binsize=binsize/10.
-!!$    allocate(histo(nbins,2))
-!!$    histo(:,:)=0
-!!$    print*,nbins,binsize
-!!$    call histogram(dble(data),nbins,binsize,histo) !
-!!$    print*,'done'
-!!$    nsample_target=maxval(histo(:,2))
-!!$    !print*,'nsample target=',nsample_target
-!!$    nbins_target=int(nrows/nsample_target(1))+1
-!!$
-!!$    if (allocated(binmaxs)) deallocate(binmaxs)
-!!$    if (allocated(binmins)) deallocate(binmins)
-!!$    if (allocated(binminmax_copy)) deallocate(binminmax_copy)
-!!$ 
-!!$!print*,'nbins_target=',nbins_target
-!!$
-!!$   allocate(binmaxs(nbins_target),binmins(nbins_target),binminmax_copy(nbins_target))
-!!$    binmins(:)=-1.
-!!$    binmaxs(:)=-1.
-!!$
-!!$    ii=1
-!!$    cumul=0.
-!!$    binmins(1)=minval(data)
-!!$    do i=1,nbins ! bins of the original histogram
-!!$       cumul=cumul+histo(i,2) ! cumulative number of object in the histogram
-!!$       if (cumul >= nsample_target(1)) then
-!!$          binmaxs(ii)=histo(i,1)
-!!$          binmins(ii+1)=histo(i,1)
-!!$          !print*,binmins(ii),binmaxs(ii),cumul
-!!$          ii=ii+1
-!!$          cumul=0.
-!!$          GOTO 100
-!!$       endif
-!!$100    continue
-!!$    enddo
-!!$    binmaxs(ii-1)=maxval(data)
-!!$    print*,'ok1'
-!!$    ! trim binmaxs,binmins
-!!$
-!!$    nbins_final=0
-!!$    do i=1,nbins_target
-!!$       if (binmaxs(i) /=-1) nbins_final=nbins_final+1
-!!$    enddo
-!!$
-!!$    print*,'ok2',nbins_target,nbins_final
-!!$
-!!$    if (nbins_final < nbins_target) then
-!!$       binminmax_copy(:)=binmins
-!!$       deallocate(binmins)
-!!$       allocate(binmins(nbins_final))
-!!$       binmins=binminmax_copy(1:nbins_final)
-!!$       binminmax_copy=binmaxs
-!!$       deallocate(binmaxs)
-!!$       allocate(binmaxs(nbins_final))
-!!$       binmaxs=binminmax_copy(1:nbins_final)
-!!$       deallocate(binminmax_copy)
-!!$    endif
-!!$
-!!$print*,binmins
-!!$print*,binmaxs
-!!$print*,nbins_final
-!!$
-!!$!stop
-!!$  end subroutine get_bins_old
-
 
 
  subroutine get_bins(data,nbins,binmins,binmaxs)
@@ -700,7 +578,7 @@ contains
     do i=1,nsmall
        if (nbig ==0) goto 200 ! job done if all objects have been matched
        if (matches(sample_small(i)) ==-100) then ! this object has not been matched already
-          s=abs(randgauss_boxmuller(iseed)) ! random number for the scatter
+          s=abs(random_normal()) ! random number for the scatter
           do j=jstart,nbig
 
              if((data_big(sample_big(j))/=-100) .and. &
@@ -758,7 +636,7 @@ contains
     do i=1,nsmall
        if (nbig ==0) goto 200 ! job done if all objects have been matched
        if (matches(i) ==-100) then ! this object has not been matched already
-          s=abs(randgauss_boxmuller(iseed)) ! random number for the scatter
+          s=abs(random_normal()) ! random number for the scatter
            do j=jstart,nbig
              if((data_big(j) /=-100.) .and. (abs(data_small(i)-data_big(j)) <= scatter*data_small(i)*s)) then
                 
@@ -862,19 +740,80 @@ subroutine Lsynch(nu,sfr,L)
 
 
     !Mancuso et al. 2015 eq 3
-    L=(nu/1000.)**(-0.85)*(1.+(nu/20000.)**0.5)**(-1.) !common part in L and Lstar
+!    L=(nu/1000.)**(-0.85)*(1.+(nu/20000.)**0.5)**(-1.) !baseline Mancuso model
 
-    print*,L
-    L=(nu/1400.)**(-0.85-0.07*log(nu/1400.)) !curved spectrum consistent with Mancuso at nu>1.4
+    !L=(nu/1000.)**(-0.85-0.07*log(nu/1000.))/1.25 !curved spectrum consistent with Mancuso at nu>1.4
 
-    print*,L
-
-    stop
+    L=(nu/1000.)**(-0.85-0.07*log(nu/1000.))/1.5 !curved spectrum consistent with lower normalization wrt Mancuso - good agreement @ 150 MHz
+   
     L=L*normstar/((normstar/norm/sfr)**beta+(normstar/norm/sfr))  ! erg/s/Hz
 
   end subroutine Lsynch
 
 
+
+  !New model from Smith et al. Linear relation between SFR L, mstar dependence
+  ! functions to compute radio luminosity from SFR 
+  ! synchrotron emission
+subroutine Lsynch2(nu,sfr,mstar,L)
+    implicit none
+    ! synchrotron luminosity for one galaxy at several frequencies
+    real(dp),intent(out)::L(:)
+    real(dp),intent(in)::nu(:),sfr
+    real(sp),intent(in)::mstar
+    !real(dp),parameter::normstar=1.68e28,norm=1.9e28,beta=3
+    real(sp),parameter::logL0=22.1,beta=0.85,gamma=0.402
+    !real(sp),parameter::nu0=1000.,si=-0.85,dsi=-0.07,norm=0.256
+!    real(sp),parameter::nu0=1400.,si=-0.85,dsi=-0.1,norm=0.15    !smith0
+    real(sp),parameter::nu0=1400.,si=-0.85,dsi=-0.08,norm=0.15    !smith1
+    !real(sp),parameter::logL0=22.181,beta=1.041,gamma=0.402
+    real(sp)::logL,L14
+
+    !Mancuso et al. 2015 eq 3
+    !L=(nu/1000.)**(-0.85)*(1.+(nu/20000.)**0.5)**(-1.) !baseline Mancuso model
+    !L=L/((150./1000)**(-0.85)*(1.+(150./20000.)**0.5)**(-1.)) !baseline Mancuso model
+
+    !L=(nu/1000.)**(-0.85-0.07*log(nu/1000.))/1.25 !curved spectrum consistent with Mancuso at nu>1.4
+
+    !frequency dependence - Bonaldi et al. 2022
+
+
+    
+    L=(nu/nu0)**(si+dsi*log(nu/nu0)) !curved spectrum consistent with lower normalization wrt Mancuso - good agreement @ 150 MHz
+
+    ! this is normalised to 1 at 1400 MHz
+    L14=(1400./nu0)**(si+dsi*log(1400./nu0))
+    L=L/L14
+    
+    
+    L=L*norm
+    !L=L*norm/(1400./nu0)**(si+dsi*log(1400./nu0))
+    !print*,((150./nu0)**(si+dsi*log(150./nu0)))
+    !print*,nu
+    !print*,L
+!stop
+    !L=L*normstar/((normstar/norm/sfr)**beta+(normstar/norm/sfr))  ! erg/s/Hz
+
+    !smith et al. 2020 eq 2
+    logL=(logL0 + random_normal()*4.e-3)+(beta + random_normal()*5.e-3)*log10(sfr)+(gamma+random_normal()*5.e-3)*(mstar-10)
+
+!!$    print*,mstar
+!!$    stop
+    
+    L=L*1.e7*10.**(logL) !1e7 is the conversion from W/Hz to erg/s/Hz
+    !print*,mstar
+    !print*,nu
+    !print*,L
+    !stop
+
+    !log10(L150 MHz/W Hz−1)=(0.90±0.01) log10(SFR/M⊙ yr−1)+(0.33±0.04) log10(M/1010M⊙)+22.22±0.02
+    !W=1.e7 erg/s
+  end subroutine Lsynch2
+
+
+
+
+  
   ! free-free emission
   subroutine Lff(nu,sfr,L)
     ! free-free luminosity for one galaxy at several frequencies
@@ -917,53 +856,57 @@ subroutine Lsynch(nu,sfr,L)
 
   !computing frequency spectra with effective spectral indices depending on the flux and frequency
   ! this method is to enforce consistency with counts over a broad frequency range, 150 MHz to 20 GHz. 
-  subroutine effective_index(i14,i48,ii,alpha,alphascaling_lowf,alphascaling_highf,radioflux_i,frequencies)
+  subroutine effective_index(i14,i48,ii,alpha,alphascaling_midf,alphascaling_highf,alphascaling_lowf,radioflux_i,frequencies)
     implicit none
-    integer::i14,i48,i,p(1),iseed,jj,ii,Nfreq
-    real(sp)::radioflux_i(:),alpha_low,alpha_high,norm_f,logs,alphascat
-    real(dp),intent(in)::alphascaling_lowf(:,:),alphascaling_highf(:,:),frequencies(:),alpha
+    integer::p_low(1),p_mid(1),p_high(1)
+    integer::i14,i48,i,iseed,jj,ii,Nfreq
+    real(sp)::radioflux_i(:),alpha_mid,alpha_high,alpha_low,norm_f,logs,alphascat
+    real(dp),intent(in)::alphascaling_lowf(:,:),alphascaling_highf(:,:),alphascaling_midf(:,:),frequencies(:),alpha
 
    
     Nfreq=size(frequencies)
-    logs=log10(radioflux_i(i14))-3.  !1.4 GHz log flux Jy  !1.4 GHz log flux Jy
-    p=minloc(abs(alphascaling_lowf(:,1)-logs))
+    
 
-    alphascat=randgauss_boxmuller(iseed)*0.25
-    alpha_low=alphascaling_lowf(p(1),ii+1)+alphascat
+    
+    !match the source flux with those in the effective index arrays
+    logs=log10(radioflux_i(i14))-3.  !1.4 GHz log flux Jy
 
-    !    Radioflux_i(:)=(Radioflux_i(i14)*(frequencies/1400.)**alpha_low) !orig
+    !flux at 1.4 GHz for flat sources
+    p_mid=minloc(abs(alphascaling_midf(:,1)-logs))
+    p_low=minloc(abs(alphascaling_lowf(:,1)-logs))
 
-    ! test 6/9/19: I use the effective indev only for v>1400
-    alphascat=alpha+alphascat ! Bonato mean indices 
+    alphascat=random_normal()*0.25 !scatter
+    alpha_mid=alphascaling_midf(p_mid(1),ii+1)+alphascat
+    alpha_low=alphascaling_lowf(p_low(1),ii+1)+alphascat
+    
 
-
-!print*,'indices=',alpha_low,alphascat
-!stop
     do jj=1,Nfreq
        if (frequencies(jj) > 1400.) then
-          Radioflux_i(jj)=(Radioflux_i(i14)*(frequencies(jj)/1400.)**alpha_low)
+          Radioflux_i(jj)=(Radioflux_i(i14)*(frequencies(jj)/1400.)**alpha_mid)
        else
-          Radioflux_i(jj)=(Radioflux_i(i14)*(frequencies(jj)/1400.)**alphascat)
+          !Radioflux_i(jj)=(Radioflux_i(i14)*(frequencies(jj)/1400.)**(alpha+alphascat)) !baseline
+          Radioflux_i(jj)=(Radioflux_i(i14)*(frequencies(jj)/1400.)**(alpha_low)) !effective below 1.4GHz
        endif
+
+      ! print*,frequencies(jj),radioflux_i(jj)
+       
     enddo
 
 
-    !now up to 4.8 GHz flux is correct
+  !now up to 4.8 GHz flux is correct
     logs=log10(radioflux_i(i48))-3.  !4.8 GHz log flux Jy
-
-    p=minloc(abs(alphascaling_highf(:,1)-logs))
-    alpha_high=alphascaling_highf(p(1),ii+1)+randgauss_boxmuller(iseed)*0.25
+    p_high=minloc(abs(alphascaling_highf(:,1)-logs))
+    alpha_high=alphascaling_highf(p_high(1),ii+1)+random_normal()*0.25
 
 
 
     do jj=1,Nfreq 
-
        if (frequencies(jj) >= 4800.) then
           Radioflux_i(jj)=(radioflux_i(i48)*(frequencies(jj)/4800.)**alpha_high)
-
        endif
 
     enddo
+
 
 
   end subroutine effective_index
@@ -1017,7 +960,7 @@ Mstar=10.**logMstar
 
 size_SF=(gamma_1*(Mstar)**alpha_1*(1.+Mstar/M0_1)**(beta_1-alpha_1))/1000.
 sigma_lnR=sigma2+(sigma1-sigma2)/(1.+(Mstar/M0_sigma)**2.)
-scat=randgauss_boxmuller(seed)*sigma_lnR
+scat=random_normal()*sigma_lnR
 size_SF=log(size_SF)+scat
 size_SF=exp(size_SF)
 
