@@ -66,8 +66,8 @@ program sampler
   real(sp),allocatable::delta(:),work(:,:),diff(:)
   real(sp),allocatable::Radioflux(:,:),catout(:,:),catout_copy(:,:),samplex(:),lums(:),z_gals(:)
   real(sp),allocatable::Polaflux(:,:),inclinations(:),qrat(:),ellipticity1(:)
-  real(sp),allocatable::ellipticity2(:),polafracs(:),lums_save(:,:),thetas(:),specind(:)
-  real(sp)::sample100(100),rn
+  real(sp),allocatable::ellipticity2(:),polafracs(:),lums_save(:,:),thetas(:),freq_rest(:),lums_i(:)!,specind(:)
+  real(sp)::sample100(100),rn,l_iii,nu_iii
   real(sp),allocatable::Radioflux_copy(:,:),samplex_copy(:),sizes(:),radioflux_slice(:,:),lums_slice(:),mstar_slice(:)
   real(sp),allocatable::angles(:),sizes_3d(:),lums_copy(:),spot_dist(:),himass(:),mstar_copy(:)
   real(sp),allocatable::darkmass(:),latitudes(:),longitudes(:),mstar(:)
@@ -417,8 +417,6 @@ program sampler
   allocate(data(nfreq,ncolumns))
   call read_columns(freq_filename,2,nfreq,Ncolumns,nskip,data)
   Nfreq_out=Nfreq
-
-
   ! add to the frequency vector the frequencies: 
   !1400 and 4800 MHz and the frequency at which the flux cut is done, whether they are already 
   !included or not, because they are needed for the modelling. those added frequencies
@@ -430,6 +428,7 @@ program sampler
   frequencies(2)=4800.
   frequencies(3)=fluxlim_freq
   frequencies(4:Nfreq)=data(:,1)
+
   deallocate(data)
 
   !position of the reference frequencies in the frequency vector
@@ -740,7 +739,7 @@ program sampler
                  zstr_long=redshift_names_lum(islice) !string tag 
 
                  conv_flux=1./(4.*pi*(lumr(zlum)*Mpc)**2)*1.e26*(1+zlum)!L [erg/s/Hz] ->S [mJy]
-                 
+
                  frequencies_rest=frequencies*(1.+zlum) !freq in the rest frame (for K correction)
 
                  !read luminosities 
@@ -1275,29 +1274,36 @@ program sampler
 
            ! compute intrinsic luminosities and store them in the catalogue if requested
            if (save_lums ==1) then
-              allocate(lums_save(Nfreq,Nsample))
+
+              allocate(lums_save(Nfreq,Nsample),freq_rest(Nfreq),lums_i(Nfreq))
+
               do i=1,Nsample
                  zlum=z_gals(i)
-!!$                 specind=log(radioflux(:,i)/radioflux(i14,i))/log(frequencies/1400.)
-!!$                 do iii=1,Nfreq
-!!$                    if (frequencies(iii)==1400.) specind(iii)= log(radioflux(i48,i)/radioflux(i14,i))/log(4800./1400.)
-!!$                 enddo
-!!$
-!!$
-!!$                 
-!!$                 print*,frequencies
-!!$                 print*,'--'
-!!$                 print*,specind
-!!$                 stop
-!!$                 
-                 
-                 conv_flux=1./(4.*pi*(lumr(zlum)*Mpc)**2)*1.e26*(1+zlum) !L [erg/s/Hz] ->S [mJy]
-                 !conv_flux=1./(4.*pi*(lumr(zlum)*Mpc)**2)*1.e26*(1+zlum)**(1.-alpha) !L [erg/s/Hz] ->S [mJy]
-                 lums_save(:,i)=log10(radioflux(:,i)/conv_flux)
+
+                 conv_flux=1./(4.*pi*(lumr(zlum)*Mpc)**2)*1.e26*(1.+zlum) !L [erg/s/Hz] ->S [mJy]
+
+                 lums_i=log10(radioflux(:,i)/conv_flux) !luminosities at the rest frequencies 
+
+
+
+                 freq_rest=log10(frequencies*(1.+z_gals(i))) ! rest frequencies
+
+
+                 !interpolate the luminosity as a function of frequency from rest frequencies to frequencies
+
+
+                 do iii=4,Nfreq
+                    nu_iii=log10(frequencies(iii))
+                    l_iii=interpol_nosort(nu_iii,freq_rest,lums_i,Nfreq)
+                    lums_save(iii,i)=l_iii
+
+                 enddo
+
+
               enddo
 
               catout(2*nfreq_out+18:3*nfreq_out+17,jstart:jstart+Nsample-1)=lums_save(4:Nfreq,:)
-              deallocate(lums_save)
+              deallocate(lums_save,lums_i,freq_rest)
 
            endif
 
@@ -1337,7 +1343,7 @@ program sampler
 
         zstr=redshift_names(zi) 
 
-        
+
         conv_flux=1./(4.*pi*(lumr(z)*Mpc)**2)*1.e26*(1+z) !L [erg/s/Hz] ->S [mJy]
         frequencies_rest=frequencies*(1.+z) !freq in the rest frame (for K correction)
 
@@ -1376,7 +1382,7 @@ program sampler
         SFR2Mstar_filename='../../TRECS_Inputs/results_SFR_Mstar/SFR2mstar_z'//zstr//'.txt' 
         Ncolumns=2
         nrows=rows_number(SFR2Mstar_filename,1,nskip)
-        
+
 
         if(allocated(SFRtab)) deallocate(SFRTab,mstartab)
         allocate(data(nrows,ncolumns),SFRtab(nrows),mstartab(nrows),stat=iostat)
@@ -1522,10 +1528,10 @@ program sampler
                  call Lff(frequencies_rest,sfr,Lfree) 
                  !syn+ff with a scatter (evolution relation by Magnelli et al. )
                  !                 delta=10.0000**(log10(Lsyn+Lfree)+random_normal()*0.4000+2.3500*(1.0000 -(1.0000 +z)**(-0.1200))) !TODO: eliminate magnelli
-                ! delta=10.0000**(log10(Lsyn+Lfree)+random_normal()*0.4000+2.3500) 
-                ! if (minval(delta)<0.) delta(:)=0. 
+                 ! delta=10.0000**(log10(Lsyn+Lfree)+random_normal()*0.4000+2.3500) 
+                 ! if (minval(delta)<0.) delta(:)=0. 
                  ! Lums_slice(j)=dlog10(delta(i14)+Ld(i14)*sfr)
-!                 Radioflux_slice(:,j)=(delta+Ld*sfr)*conv_flux ! add dust SED
+                 !                 Radioflux_slice(:,j)=(delta+Ld*sfr)*conv_flux ! add dust SED
                  Lums_slice(j)=dlog10(Lsyn(i14)+Lfree(i14)+Ld(i14)*sfr) 
                  Radioflux_slice(:,j)=(Lsyn+Lfree+Ld*sfr)*conv_flux ! add dust SED
                  if (Radioflux_slice(ilim,j)>= fluxlim*1000.) Nsample_surv= Nsample_surv+1  ! implement flux threshold
@@ -1794,15 +1800,41 @@ program sampler
 
            ! compute intrinsic luminosities and store them in the catalogue if requested
            if (save_lums ==1) then
-              allocate(lums_save(Nfreq,Nsample))
+
+
+
+
+              allocate(lums_save(Nfreq,Nsample),freq_rest(Nfreq),lums_i(Nfreq))
+
               do i=1,Nsample
                  zlum=z_gals(i)
-                 conv_flux=1./(4.*pi*(lumr(zlum)*Mpc)**2)*1.e26*(1+zlum) !L [erg/s/Hz] ->S [mJy]
-                 lums_save(:,i)=log10(radioflux(:,i)/conv_flux)
-              enddo
-              catout(2*nfreq_out+18:3*nfreq_out+17,jstart:jstart+Nsample-1)=lums_save(4:Nfreq,:)
-              deallocate(lums_save)
 
+                 conv_flux=1./(4.*pi*(lumr(zlum)*Mpc)**2)*1.e26*(1.+zlum) !L [erg/s/Hz] ->S [mJy]
+
+                 lums_i=log10(radioflux(:,i)/conv_flux) !luminosities at the rest frequencies 
+
+
+
+                 freq_rest=log10(frequencies*(1.+z_gals(i))) ! rest frequencies
+
+
+                 !interpolate the luminosity as a function of frequency from rest frequencies to frequencies
+
+
+                 do iii=4,Nfreq
+                    nu_iii=log10(frequencies(iii))
+                    l_iii=interpol_nosort(nu_iii,freq_rest,lums_i,Nfreq)
+                    lums_save(iii,i)=l_iii
+
+                 enddo
+
+
+              enddo
+
+
+              catout(2*nfreq_out+18:3*nfreq_out+17,jstart:jstart+Nsample-1)=lums_save(4:Nfreq,:)
+
+              deallocate(lums_save,lums_i,freq_rest)
            endif
 
            Nsample_old=Nsample_old+Nsample ! size of the catalogue filled so far
@@ -1828,7 +1860,7 @@ program sampler
         endif
         deallocate(x,px,data)
         deallocate(masses_L14,l14)
-        
+
      endif
 
   enddo

@@ -66,10 +66,10 @@ folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/'
 tag='cross_17sep'
 
 
-folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_smith/test1_new/'
+folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_smith/test2/'
 folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_smith/'
 
-tag='test1_new'
+tag='test2'
 
 
 

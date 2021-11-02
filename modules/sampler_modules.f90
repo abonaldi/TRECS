@@ -43,7 +43,73 @@ contains
        interpol=A*val**2.+B*val+C
   endif
 
-     end function interpol
+end function interpol
+
+
+  function interpol_nosort(val,x,y,N)
+!does not assome the values to be unique nor sorted
+    implicit none
+    real(sp),intent(IN)::x(:),y(:)
+    real(sp),intent(in)::val
+    real(sp)::interpol_nosort
+    integer::N,N2,i,ii,p(1),ny,p1,p2,p3
+    real(sp)::dif(N),dist(1),flagval
+    real(dp)::x0,x1,x2,y0,y1,y2,A,B,C,tiny!,p0,p1,p2,yold
+
+    tiny=1.e-3
+    dif=abs(val-x)
+    p=minloc(dif)
+    dist=minval(dif)
+    flagval=maxval(dif)*2.
+    !print*,dist
+    !stop
+    if (dist(1)<tiny) then
+       interpol_nosort=y(p(1))
+       !no interpolatin needed
+    else
+
+       !find the three closest points recursively
+       p1=p(1)
+       do i=1,N
+          if (dif(i) ==dist(1)) dif(i)=flagval
+       enddo
+       p=minloc(dif)
+       dist=minval(dif)
+       p2=p(1)
+
+       do i=1,N
+          if (dif(i) ==dist(1)) dif(i)=flagval
+       enddo
+       p=minloc(dif)
+       p3=p(1)
+
+
+
+       !quadratic interpolation. find closest three points
+       !if (p(1)==1) then 
+       !   ii=p(1)+1
+       !else if (p(1)==N2) then
+       !   ii=p(1)-1
+       !else
+       !   ii=p(1)
+       !endif
+       x0=x(p1) 
+       x1=x(p2) 
+       x2=x(p3) 
+       y0=y(p1) 
+       y1=y(p2) 
+       y2=y(p3) 
+
+!!$       print*,10.**x0,y0
+!!$       print*,10.**x1,y1
+!!$       print*,10.**x2,y2
+!!$       stop
+       call quadratic(x0,x1,x2,y0,y1,y2,A,B,C)
+
+       interpol_nosort=A*val**2.+B*val+C
+  endif
+
+     end function interpol_nosort
 
 subroutine quadratic(x0,x1,x2,y0,y1,y2,A,B,C)
 implicit none
