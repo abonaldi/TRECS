@@ -1032,6 +1032,58 @@ size_SF=exp(size_SF)
 
 end function size_SF
 
+! size of star-forming galaxies
+function starmass(logM,z)
+! Mh DM halo mass
+implicit none
+real(sp),intent(in)::logM
+real(sp),intent(in)::z
+integer::seed
+real(sp)::logMstar,logR,chi,chi2,chi3,logNz,logMbz,M1,M2,alpha,omega
+real(sp)::sigma_lnR,scat
+real(sp)::starmass
+
+!Aversa et al. 2015 Table 2 M*-Mh with evolution
+real(sp),parameter::alpha0=-2.2,alpha1=-1.9,alpha2=-1.6,alpha3=4.7
+real(sp),parameter::omega0=-0.75,omega1=-0.30,omega2=-1.8,omega3=2.6
+real(sp),parameter::norm0=10.4,norm1=-0.8,norm2=0.8,norm3=-0.2
+real(sp),parameter::mb0=11.5,mb1=-0.0,mb2=0.0,mb3=-0.0
+real(sp),parameter::theta=-1.
+
+!re-fitted parameters from Shen et al. late-type model 
+!real(sp),parameter::alpha_1=0.115114,beta_1= 0.898240,gamma_1=0.198678,M0_1=3.01609e10 ! updated after calibrating from gauss fwhm to exp scale rad. 
+!real(sp),parameter::sigma1=0.47,sigma2=0.34,M0_sigma=4.e10 ! shen et al. table 1 for scatter
+
+
+save seed
+
+!Aversa et al. 2015 Table 2 M*-Mh with evolution
+chi=log10((1.+z)/1.1)
+chi2=chi**2.
+chi3=chi**3.
+
+alpha=alpha0+alpha1*chi+alpha2*chi2+alpha3*chi3
+omega=omega0+omega1*chi+omega2*chi2+omega3*chi3
+logMbz=mb0+mb1*chi+mb2*chi2+mb3*chi3
+logNz=norm0+norm1*chi+norm2*chi2+norm3*chi3
+
+
+
+M1=10.**(alpha*(logM-logMbz))
+M2=10.**(omega*(logM-logMbz))
+logMstar=logNz+theta*log10(M1+M2)-2.
+
+
+starmass=logMstar*(1.+random_normal()/10.)
+
+!size_SF=(gamma_1*(Mstar)**alpha_1*(1.+Mstar/M0_1)**(beta_1-alpha_1))/1000.
+!sigma_lnR=sigma2+(sigma1-sigma2)/(1.+(Mstar/M0_sigma)**2.)
+!scat=random_normal()*sigma_lnR
+!size_SF=log(size_SF)+scat
+!size_SF=exp(size_SF)
+
+end function starmass
+
 
 end module trecs_mods
 
@@ -1141,9 +1193,9 @@ contains
   !-----------------------------------------------------------------------
 
   function theta(size,z)
-    ! angular size of a source given physical size and redshift
-    !size in Mpc
-    !theta in arcsec
+    ! angular size of a source given comoving size and redshift
+    ! size in Mpc (comoving)
+    ! theta in arcsec
     real(sp),intent(in)::size
     real(dp),intent(in)::z
     real(sp)::theta      
@@ -1152,8 +1204,8 @@ contains
 
   function size(fov,z)
     ! comoving size of a source given angular and redshift
-    !fov in degrees
-    !size in MPc
+    ! fov in degrees
+    ! size in MPc (comoving)
     real(dp),intent(in)::fov,z
     real(dp)::size
     size=fov*PI/180.*r(z)

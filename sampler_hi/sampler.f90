@@ -534,10 +534,16 @@ program sampler
            longitudes(i)=(rand()-0.5)*sim_side
            z_i=dble(z_gals(i))
 
-           dim=(0.506+random_normal()*0.003)*samplex(i)-3.293+random_normal()*0.009 !log phys size kpc , Wang et al. 2016 eq 2. 
+           !dim=(0.506+random_normal()*0.003)*samplex(i)-3.293+random_normal()*0.009 !log phys size kpc , Wang et al. 2016 eq 2.
 
+           !Naluminsa et al. (2021)
+           !logM_HI=(1.95 pm 0.03)log D_HI +(6.5 pm 0.04)
+           !log D_HI = (0.51 pm 0.01) log M_HI - (3.33 pm 0.03)
+
+           dim=(0.51+random_normal()*0.01)*samplex(i)-3.33+random_normal()*0.03 !log phys size kpc , Naluminsa et al. (2021)
+           
            Dim=10.**dim/1000./2. !size in Mpc, radius instead of diameter
-           sizes(i)=theta(dim,z_i)!*0.2 ! apparent size. 
+           sizes(i)=theta(dim,z_i)! apparent size. 
            !old: the 0.2 factor converts to exponential scale radius, wang et al. 2016 section 3.1
 
 

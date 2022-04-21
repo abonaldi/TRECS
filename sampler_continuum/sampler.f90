@@ -97,7 +97,7 @@ program sampler
   !integer variables
   integer::no_AGN,no_SFG,save_lums,Nsample_binned,istart(1),iend(1),istart_i,iend_i,iii,jstart
   integer*8::Nsample,Nsample_lerg,Nsample_herg,join,k,n_hist,nside,ntiles,t,Nsample100
-  integer::iseed,Nfreq,Nfreq_out,i,ii,nrows,Ncolumns,Ncolumns_lf,nskip,Ngen,Ngen2,jj,kk,nrows_sf,seed_fix
+  integer::iseed,Nfreq,Nfreq_out,i,ii,nrows,nrows_sfrtab,Ncolumns,Ncolumns_lf,nskip,Ngen,Ngen2,jj,kk,nrows_sf,seed_fix
   integer::buffer_size,buffer_free,jbuf,buffer_free_old,buffer_size_old,l_outdir
   integer::count,Ncat_common,nrows_lerg,nrows_herg,seed(34),nrows_old,nrows_lf
   integer::Nsample_old,Nfunction,Nsample_surv,Nhaloes,Nsample_mass,nreds_out
@@ -204,7 +204,6 @@ program sampler
   !    AGNs
   !
   !effective spectral indices for AGNs
-  !filename1='../../TRECS_Inputs/alphaeff/alphascaling_flat_1.4_4.8.txt' ! 1.4-4.8 GHz flat
   filename1='../../TRECS_Inputs/alphaeff/alphascaling_1.4_4.8.txt'
   filename2='../../TRECS_Inputs/alphaeff/alphascaling_4.8_20.txt'
   filename3='../../TRECS_Inputs/alphaeff/alphascaling_1.4_0.150.txt'
@@ -271,26 +270,15 @@ program sampler
   allocate(data(n,ncolumns),alphascaling_14_48(n,5)) !flux, flux, alphaflat,alphaflat,alphasteep
   call read_columns(filename1,2,n,Ncolumns,nskip,data)
 
-!!$  do i=1,n
-!!$     alphascaling_14_48(i,1)=data(i,1)           !flux flat
-!!$     alphascaling_14_48(i,1)=data(i,3)           !flux steep
-!!$     alphascaling_14_48(i,2)=data(i,2)           !alpha_flat
-!!$     alphascaling_14_48(i,3)=data(i,2)           !alpha_flat
-!!$     alphascaling_14_48(i,4)=data(i,4)           !alpha_steep
-!!$  enddo
 
   do i=1,n
      alphascaling_14_48(i,1)=data(i,1)           !flux flat
      alphascaling_14_48(i,2)=data(i,2)-data(i,3)           !
      alphascaling_14_48(i,3)=data(i,2)-data(i,3)           !alpha_flat
      alphascaling_14_48(i,4)=data(i,4)-data(i,5)           !alpha_steep
-     !alphascaling_14_48(i,4)=data(i,4)           !alpha_steep
   enddo
 
 
-!!$  print*,sum(alphascaling_14_48(:,2))/n,sum(alphascaling_14_48(:,3))/n,sum(alphascaling_14_48(:,4))/n
-!!$
-!!$  stop
   deallocate(data)
   !4.8-20 GHz range
   Ncolumns=5
@@ -298,27 +286,14 @@ program sampler
   allocate(data(n,ncolumns),alphascaling_48_20(n,5)) !flux, flux, alphaflat,alphaflat,alphasteep
   call read_columns(filename2,2,n,Ncolumns,nskip,data)
 
-!!$  do i=1,n
-!!$     alphascaling_48_20(i,1)=data(i,1)           !flux flat
-!!$     alphascaling_48_20(i,1)=data(i,3)           !flux steep
-!!$     alphascaling_48_20(i,2)=data(i,2)           !alpha_flat
-!!$     alphascaling_48_20(i,3)=data(i,2)           !alpha_flat
-!!$     alphascaling_48_20(i,4)=data(i,4)           !alpha_steep
-!!$  enddo
-
   do i=1,n
      alphascaling_48_20(i,1)=data(i,1)           !flux flat
      alphascaling_48_20(i,2)=data(i,2)-data(i,3)           !
      alphascaling_48_20(i,3)=data(i,2)-data(i,3)           !alpha_flat
      alphascaling_48_20(i,4)=data(i,4)-data(i,5)           !alpha_steep
-     !alphascaling_14_48(i,4)=data(i,4)           !alpha_steep
   enddo
 
 
-  !print*,data
-!!$  print*,sum(alphascaling_48_20(:,2))/n,sum(alphascaling_48_20(:,3))/n,sum(alphascaling_48_20(:,4))/n
-!!$
-!!$  stop
 
   deallocate(data)
 
@@ -328,65 +303,18 @@ program sampler
   allocate(data(n,ncolumns),alphascaling_015_14(n,5)) !flux, flux, alphaflat,alphaflat,alphasteep
   call read_columns(filename3,2,n,Ncolumns,nskip,data)
 
-!!$  do i=1,n
-!!$     alphascaling_015_14(i,1)=data(i,1)           !flux flat
-!!$     alphascaling_015_14(i,1)=data(i,3)           !flux steep
-!!$     alphascaling_015_14(i,2)=data(i,2)           !alpha_flat
-!!$     alphascaling_015_14(i,3)=data(i,2)           !alpha_flat
-!!$     alphascaling_015_14(i,4)=data(i,4)           !alpha_steep
-!!$  enddo
 
   do i=1,n
      alphascaling_015_14(i,1)=data(i,1)           !flux flat
      alphascaling_015_14(i,2)=data(i,2)+data(i,3) !different sign because 1.4->150           !
      alphascaling_015_14(i,3)=data(i,2)+data(i,3)           !alpha_flat
      alphascaling_015_14(i,4)=data(i,4)+data(i,5)           !alpha_steep
-     !alphascaling_14_48(i,4)=data(i,4)           !alpha_steep
   enddo
-
-!!$ print*,sum(alphascaling_015_14(:,2))/n,sum(alphascaling_015_14(:,3))/n,sum(alphascaling_015_14(:,4))/n
-!!$
-!!$  stop
 
   deallocate(data)
 
 
 
-
-  !TODO: check if necessary to have a different scaling for polarization
-  ! for now use same as total intensity
-
-
-!!$  ! polarization effective indices
-!!$  !1.4-4.8 GHz, flat
-!!$  Ncolumns=4
-!!$  n=rows_number(filename5,1,nskip)
-!!$  allocate(data(n,ncolumns),alphascaling_14_48_pola(n,4)) !Flux, alphaflat,alphaflat,alphasteep
-!!$  call read_columns(filename5,2,n,Ncolumns,nskip,data)
-!!$
-!!$  do i=1,n
-!!$     alphascaling_14_48_pola(i,1)=data(i,1)   
-!!$     alphascaling_14_48_pola(i,2)=-0.1-data(i,4)
-!!$     alphascaling_14_48_pola(i,3)=-0.1-data(i,4)
-!!$  enddo
-!!$  deallocate(data)
-!!$
-!!$  alphascaling_14_48_pola(i,4)=alphascaling_14_48(i,4) ! for steep spectrum use the total intensity frequecy spectrum in polarization
-!!$
-!!$  !4.8-20 GHz, flat
-!!$  Ncolumns=4
-!!$  n=rows_number(filename6,1,nskip)
-!!$  allocate(data(n,ncolumns),alphascaling_48_20_pola(n,4)) 
-!!$  call read_columns(filename6,2,n,Ncolumns,nskip,data)
-!!$
-!!$  do i=1,n
-!!$     alphascaling_48_20_pola(i,1)=data(i,1) 
-!!$     alphascaling_48_20_pola(i,2)=-0.1-data(i,4)
-!!$     alphascaling_48_20_pola(i,3)=-0.1-data(i,4)
-!!$  enddo
-!!$  deallocate(data)
-!!$
-!!$  alphascaling_48_20_pola(i,4)=alphascaling_48_20(i,4) ! for steep spectrum use the total intensity frequecy spectrum in polarization
 
 
 
@@ -447,7 +375,7 @@ program sampler
 
 
   !structure of the catalogue
-  Ncat_common=(2+save_lums)*Nfreq_out+18 !number of catalogue columns: flux in total intensity and polarization, 
+  Ncat_common=(2+save_lums)*Nfreq_out+19 !number of catalogue columns: flux in total intensity and polarization, 
   !  commmon format for SFGs and AGNs
 
   !creating tag names for the catalogue
@@ -481,6 +409,9 @@ program sampler
   enddo
 
   tagnames(j)='Mh'
+  tunit(j)='log(Msun)'
+  j=j+1
+  tagnames(j)='Mstar'
   tunit(j)='log(Msun)'
   j=j+1
   tagnames(j)='MHI_pred'
@@ -528,8 +459,9 @@ program sampler
   tagnames(j)='OptClass'
   tunit(j)='none'
   j=j+1
+
   if (save_lums ==1) then
-     !optional tag names for the luminosity
+     !optional tag names for the luminosities
      !Luminosity
      do i=1,Nfreq_out
         write(output,"(i5)")int(frequencies(i+3))
@@ -543,10 +475,6 @@ program sampler
   endif
   tform(:)='1E'
 
-
-  !AGN simulation follows. If no AGN simulation is needed this is skipped
-  !  if (no_AGN /=0) goto 0101
-  !if (no_AGN ==0) then
 
   !*************************
   !AGN simulation starts
@@ -576,7 +504,7 @@ program sampler
   ENDDO
   close(iunit)
 
-  !reading the first characteristic luminosity file to get dimension of fiels for later
+  !reading the first characteristic luminosity file to get dimension of files for later
   AGN_filename='../../TRECS_Inputs/LF/CharLum/Characteristic_Luminosity/luminosity_0.01000.dat' 
   Ncolumns=6
   Ncolumns_lf=Ncolumns
@@ -597,19 +525,8 @@ program sampler
   dustsed(:,3)=10.**dustsed(:,3)
   dustsed(:,4)=10.**dustsed(:,4)
 
-
-
-
-
-
-
-
-  !redshift slices for AGNS
-  ! this are the central redhifts at which the Bonato et al. 1.4 GHz luminosity functions are provided.  
-  ! the lightcone for AGNs has been binned in the same way. 
-  !each redshift slice is processed independently. execution can be parallelised in redhift bins
-
-  nreds=57 !SF gals until z=8 (where I have cone)
+  ! definition of redshoft intervals
+  nreds=57 ! gals until z=8 (where I have cone)
   nreds_out=nreds
 
   allocate(redshifts(nreds),redshift_names(nreds))
@@ -642,7 +559,7 @@ program sampler
   !  names(1)='FSRQ'
   !  names(2)='BLLac'
   !  names(3)='SS_AGN'
-  !alphamed=(/-0.1,-0.1,-0.8/) ! median spectral index for the three populations
+
   alphamed=(/-0.1,-0.1,-0.72/) ! median spectral index for the three populations. SS spectral index Bonato et al. 2021 
 
   do zi=1,nreds_out-1   ! Main redshift loop 
@@ -653,7 +570,7 @@ program sampler
 
         !getting the size of the redshift slice
         delta_perp=1. 
-        deltatheta=theta(delta_perp,z)
+        !deltatheta=theta(delta_perp,z)
         select case (zi)
         case (1)
            zlow=0.
@@ -734,8 +651,6 @@ program sampler
 
               if ((zlow_lum >= zlow) .and. (zlum <= zhigh)) then ! here zlum and not zhigh_lum because i dont want to lose any small slice 
 
-                 !                 print*,'slice',redshifts_lum(islice)
-
                  zstr_long=redshift_names_lum(islice) !string tag 
 
                  conv_flux=1./(4.*pi*(lumr(zlum)*Mpc)**2)*1.e26*(1+zlum)!L [erg/s/Hz] ->S [mJy]
@@ -760,9 +675,6 @@ program sampler
 
                  Nsample=sum(poisson_numbers)  ! this is the number of galaxies to generate
 
-
-
-
                  if (Nsample==0) goto 100
 
                  allocate(samplex_slice(Nsample),radioflux_slice(Nfreq,Nsample))! arrays where to store objects
@@ -781,7 +693,8 @@ program sampler
 
 
                  alpha=alphamed(ii) ! starting point for the spectral index 
-                 !computing flux and counting number of objects above flux cut
+                 ! compute flux on just one spectral index and count number of objects above flux limit
+                 ! SED is refined later on
 
                  Nsample_surv=0
                  do i=1,Nsample
@@ -793,16 +706,12 @@ program sampler
 
                     Radioflux_slice(:,i)=flux14*(frequencies/1400.)**alpha
                     spec=radioflux_slice(:,i)
-                    !refine frequency scaling with the "effective indics" and adding scatter
+
+                    !refine frequency scaling with the "effective indics" and add scatter
                     call effective_index(i14,i48,ii,alpha,alphascaling_14_48&
                          &,alphascaling_48_20,alphascaling_015_14,spec,frequencies)
+
                     radioflux_slice(:,i)=spec
-
-                    !do j=1,Nfreq
-
-                    !print*,frequencies(j),spec(j)
-                    !enddo
-                    !stop
 
 
                     !implement flux threshold
@@ -926,13 +835,12 @@ program sampler
            !frequency scaling in polarization
            do i=1,Nsample
               spec=polaflux(:,i)
-              !call effective_index(i14,i48,ii,alpha,alphascaling_14_48_pola&
-              !     &,alphascaling_48_20_pola,spec,frequencies)
 
               call effective_index(i14,i48,ii,alpha,alphascaling_14_48&
                    &,alphascaling_48_20,alphascaling_015_14,spec,frequencies)
               polaflux(:,i)=spec
            enddo
+
            deallocate(polafracs,stat=iostat)
            if (iostat /=0) then
               print*,'Dellocation error'
@@ -940,9 +848,10 @@ program sampler
            endif
            !end polarization model
 
-           !allocate arrays to store the other results
+           !allocate arrays to store the other galaxy attributes
            allocate(Darkmass(Nsample),himass(Nsample),latitudes(Nsample),longitudes(Nsample),&
-                &z_gals(Nsample),sizes_3d(Nsample),sizes(Nsample),angles(Nsample),spot_dist(Nsample),optclass(Nsample),stat=iostat)
+                &z_gals(Nsample),sizes_3d(Nsample),sizes(Nsample),&
+                &angles(Nsample),spot_dist(Nsample),optclass(Nsample),mstar(Nsample),stat=iostat)
            if (iostat /=0) then
               print*,'Allocation error'
               stop
@@ -951,9 +860,9 @@ program sampler
            !todo:change
            himass(:)=0.
            optclass(:)=1 ! elliptical
-           if (ii==2) optclass(:)=2 ! BL-LAc have a spiral host
+           !if (ii==2) optclass(:)=2 ! BL-LAc have a spiral host
            ! size and view angle from precomputed distributions
-           spot_dist(:)=0. !Distance between two bright posts! 
+           spot_dist(:)=0. !Distance between two bright spots (FR classification) 
            !initialised to 0 because BLLAC and FSRQ will not have two lobes
 
            !AGN size model
@@ -979,7 +888,7 @@ program sampler
 
 
            ! sample from size distribution
-           !call poisson_constrained(iseed,x2,Px2,0.,2010.,sizes_3d,Nsample)
+
            if (Nsample >=100) then 
               call poisson_constrained(iseed,x2,Px2,0.,2010.,sizes_3d,Nsample)
            else
@@ -1128,7 +1037,7 @@ program sampler
                        enddo
                        if (iii > Nsample )                       goto 320 
                        ! these sources are morphologically described as FRII
-                       ! gnenerate distance between the bright spots
+                       ! generate distance between the bright spots
                        spot_dist(iii)=random_normal()*0.18+0.62 !FRII
                        Darkmass(iii)=rand()*(xmax-xmin)+xmin
                        iii=iii+1
@@ -1193,15 +1102,36 @@ program sampler
               longitudes(i)=(rand()-0.5)*sim_side
               z_gals(i)=rand()*(zhigh-zlow)+zlow
 
-              !!Baugh et al. 2019 MHI/mh relation eq 7
-              mh=darkmass(i) !log10(mh)
-              ratio1=10.**(mh-logmbreak)
-              ratio2=10.**(mh-10.)
-              !mhi=dlog10(A1*exp(-ratio1**alpha_hi)*ratio2**beta_hi+A2)+mh
-              mhi=dlog10(A2)+mh  ! Baugh et al. hi-mass limoit for all AGN
-              himass(i)=mhi+random_normal()/5.
+
+
+              mstar(i)=starmass(darkmass(i),z_gals(i)) !log10 stellar mass, Aversa et al. (2015)
+
+
+
+              !himass with a stellar mass-hi mass relation 
+              if (z_gals(i) <=0.525) then
+                 ! HI mass modeled only up to z=0.5 bin
+
+                 himass(i)=(0.71 +random_normal()*0.01)*mstar(i)+2.22 !Naluminsa et al. 2021
+
+                 if (mstar(i) > 10.) himass(i)=(0.02+random_normal()*0.002)*mstar(i)+9.52 !Catinella et al. 2010
+
+
+                 himass(i)=himass(i)+random_normal()*0.21 
+                 !!Baugh et al. 2019 MHI/mh relation eq 7
+                 mh=darkmass(i) !log10(mh)
+                 !              !ratio1=10.**(mh-logmbreak)
+                 !              !ratio2=10.**(mh-10.)
+                 !              !mhi=dlog10(A1*exp(-ratio1**alpha_hi)*ratio2**beta_hi+A2)+mh
+                 mhi=dlog10(A2)+mh  ! Baugh et al. hi-mass limit for all AGN
+                 !himass(i)=mhi+random_normal()/5.   !Baugh 
+                 !print*,himass(i),mhi
+              endif
+
               draw=rand()
-              if (draw >= 0.85) optclass(i)=2 !spiral
+              !if (draw >= 0.85) optclass(i)=2 !spiral
+              if (draw >= 0.98) optclass(i)=2 !spiral  , Koziel-Wierzbowska et al. 2020
+
            enddo
 
 
@@ -1254,22 +1184,23 @@ program sampler
            catout(2,jstart:jstart+Nsample-1)=-100. !logSFR
            catout(3:nfreq_out+1,jstart:jstart+Nsample-1)=radioflux(4:Nfreq,:)  ! total intensity
            catout(nfreq_out+3:2*nfreq_out+2,jstart:jstart+Nsample-1)=polaflux(4:Nfreq,:)  !polarization
-           catout(2*nfreq_out+3,jstart:jstart+Nsample-1)=darkmass      ! mass
-           catout(2*nfreq_out+4,jstart:jstart+Nsample-1)=himass      ! hi mass
-           catout(2*nfreq_out+5,jstart:jstart+Nsample-1)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
-           catout(2*nfreq_out+6,jstart:jstart+Nsample-1)=longitudes
-           catout(2*nfreq_out+7,jstart:jstart+Nsample-1)=0. ! spherical coordinates - to be filled by wrapper
-           catout(2*nfreq_out+8,jstart:jstart+Nsample-1)=0. 
-           catout(2*nfreq_out+9,jstart:jstart+Nsample-1)=z_gals       ! redshift
-           catout(2*nfreq_out+10,jstart:jstart+Nsample-1)=sizes       ! projected angular size
-           catout(2*nfreq_out+11,jstart:jstart+Nsample-1)=-100.     !inclinations
-           catout(2*nfreq_out+12,jstart:jstart+Nsample-1)=-100.     !axis ratio
-           catout(2*nfreq_out+13,jstart:jstart+Nsample-1)=-100.      !bmaj (host)
-           catout(2*nfreq_out+14,jstart:jstart+Nsample-1)=-100.       !bmin (host)
-           catout(2*nfreq_out+15,jstart:jstart+Nsample-1)=-100.       !PA (of the host)
-           catout(2*nfreq_out+16,jstart:jstart+Nsample-1)=spot_dist   ! distance between bright spots (Rs)
-           catout(2*nfreq_out+17,jstart:jstart+Nsample-1)=ii+3        ! flag to identify population (FSRQ, BL-LAc, SS)
-           catout(2*nfreq_out+18,jstart:jstart+Nsample-1)=optclass        ! flag to identify optical 1 elliptical, 2 spiral
+           catout(2*nfreq_out+3,jstart:jstart+Nsample-1)=darkmass      ! dark mass
+           catout(2*nfreq_out+4,jstart:jstart+Nsample-1)=mstar         ! stellar mass
+           catout(2*nfreq_out+5,jstart:jstart+Nsample-1)=himass        ! hi mass
+           catout(2*nfreq_out+6,jstart:jstart+Nsample-1)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
+           catout(2*nfreq_out+7,jstart:jstart+Nsample-1)=longitudes
+           catout(2*nfreq_out+8,jstart:jstart+Nsample-1)=0. ! spherical coordinates - to be filled by wrapper
+           catout(2*nfreq_out+9,jstart:jstart+Nsample-1)=0. 
+           catout(2*nfreq_out+10,jstart:jstart+Nsample-1)=z_gals       ! redshift
+           catout(2*nfreq_out+11,jstart:jstart+Nsample-1)=sizes       ! projected angular size
+           catout(2*nfreq_out+12,jstart:jstart+Nsample-1)=-100.     !inclinations
+           catout(2*nfreq_out+13,jstart:jstart+Nsample-1)=-100.     !axis ratio
+           catout(2*nfreq_out+14,jstart:jstart+Nsample-1)=-100.      !bmaj (host)
+           catout(2*nfreq_out+15,jstart:jstart+Nsample-1)=-100.       !bmin (host)
+           catout(2*nfreq_out+16,jstart:jstart+Nsample-1)=-100.       !PA (of the host)
+           catout(2*nfreq_out+17,jstart:jstart+Nsample-1)=spot_dist   ! distance between bright spots (Rs)
+           catout(2*nfreq_out+18,jstart:jstart+Nsample-1)=ii+3        ! flag to identify population (FSRQ, BL-LAc, SS)
+           catout(2*nfreq_out+19,jstart:jstart+Nsample-1)=optclass        ! flag to identify optical 1 elliptical, 2 spiral
 
 
            ! compute intrinsic luminosities and store them in the catalogue if requested
@@ -1302,25 +1233,16 @@ program sampler
 
               enddo
 
-              catout(2*nfreq_out+18:3*nfreq_out+17,jstart:jstart+Nsample-1)=lums_save(4:Nfreq,:)
+              catout(2*nfreq_out+20:3*nfreq_out+19,jstart:jstart+Nsample-1)=lums_save(4:Nfreq,:)
+              !      catout(2*nfreq_out+18:3*nfreq_out+17,jstart:jstart+Nsample-1)=lums_save(4:Nfreq,:)
               deallocate(lums_save,lums_i,freq_rest)
 
            endif
 
-           Nsample_old=Nsample_old+Nsample ! size of the catalogue filled so far
-           !this is to 
-
-!!$           write(output,"(i5)")t
-!!$           output=ADJUSTL(output)
-!!$           l=LEN_TRIM(output)
-!!$
-!!$           ! writing catalogue
-!!$           cat_filename=outdir(1:l_outdir)//'/catalogue_z'//zstr//'_'//trim(names(ii))//'.fits'
-!!$
-!!$           call write_catalogue(cat_filename,catout,Ncat_agn,tagnames)
+           Nsample_old=Nsample_old+Nsample ! size of the catalogue filled so far. It needs to be completed with SFGs
 
            !free memory
-           deallocate(radioflux,polaflux,samplex,darkmass,himass,latitudes,&
+           deallocate(radioflux,polaflux,samplex,darkmass,mstar,himass,latitudes,&
                 &longitudes,z_gals,sizes,sizes_3d,angles,spot_dist,optclass,stat=iostat)
            if (iostat/=0) then
               print*,'sampler: deallocation error'
@@ -1328,9 +1250,6 @@ program sampler
            endif
 
 
-
-!!$
-!!$           print*,'done'
 400        continue
 
         enddo ! end loop AGN populations
@@ -1353,7 +1272,7 @@ program sampler
 
         !z-angular distance conversion at this redshift
         delta_perp=1. 
-        deltatheta=theta(delta_perp,z)
+        !deltatheta=theta(delta_perp,z)
 
         volumetot=4.*pi/3.*(r(zhigh)**3-r(zlow)**3)
         volume=volumetot*skyfrac  !volume corresponding to FoV
@@ -1390,7 +1309,7 @@ program sampler
            print*,'Allocation error'
            stop
         endif
-
+        nrows_sfrtab=nrows
         call read_columns(SFR2Mstar_filename,2,nrows,Ncolumns,nskip,data)
         SFRtab=data(:,1)
         mstartab=data(:,2)
@@ -1431,34 +1350,25 @@ program sampler
            buffer_size=1000
            buffer_free=buffer_size
            jbuf=0 ! index to fill buffer 
-           !print*,'beginning loop'
            px=(10.**data(:,ii+2)) !phi(logSFR)
 
+           call Ldust(frequencies_rest,dustsed,dif,ii,Ld) !dust luminosity is from a template. needs to be multiplied by sfr
 
-           ! pezzo in test comincia qui
-           ! quick calculation of max radioflux at the selection frequency to avoid generating galaxies which will be discarded
-           call Ldust(frequencies_rest,dustsed,dif,ii,Ld) 
+
+           ! select the portion of SFR function that's relevant given the flux limit
+           ! this avoids generating too many galaxies that are subsequently discarded.
+
            do iii=1,nrows
               sfr=10.**x(iii)
 
               ! use the tabulated values to find Mstar corresponding to given SFR following Aversa et al. 2015
               p=minloc(abs(x(iii)-SFRtab))
               m_star=mstartab(p(1))
-              !print*,x(iii),mstar
-              !stop
 
-              !flux= synchrotron + free-free+dust
               call Lsynch2(frequencies_rest,sfr,m_star,Lsyn) !Lsyn with mass dependence
-              !call Lsynch(frequencies_rest,sfr,Lsyn) !Lsyn with mass dependence 
-
-
-              call Lff(frequencies_rest,sfr,Lfree) 
-              !syn+ff with a scatter 
-              test=random_normal()  
-              delta=10.0000**(log10(Lsyn+Lfree)+test*0.4000+2.3500)
-              if (minval(delta)<0.) delta(:)=0. 
-              test=(delta(ilim)+Ld(ilim)*sfr)*conv_flux ! add dust SED
-              if (test < fluxlim*1000.) px(iii)=0.
+              call Lff(frequencies_rest,sfr,Lfree)
+              test=(Lsyn(ilim)+Lfree(ilim)+Ld(ilim)*sfr)*conv_flux ! add dust SED
+              if (test < fluxlim*1000.*0.95) px(iii)=0.  ! threshold below the flux limit to allow for scatter
            enddo
 
            integ=trapint(x,px) ! integral with trapezium rule for the PDF, to give the number of galaxies 
@@ -1474,6 +1384,7 @@ program sampler
            if (iostat /= 0.) then 
               print*,'deallocation error poisson numbers!'
            endif
+
            ! Poisson sampling to get number of object per SFR bin from the PDF
            do i=1,N
               mu=real(Px(i)*norm)
@@ -1499,45 +1410,44 @@ program sampler
 
            dx=abs(x(2)-x(1))
 
-           ! generating SFR values for the galaxies from the PDF
-
-           !           call Ldust(frequencies_rest,dustsed,dif,ii,Ld) 
-           ! this if the same for the same redshift slice. need to be multiplied by sfr 
            Nsample_surv=0
 
-           !print*,poisson_numbers,sum(poisson_numbers)
 
+           !loop over SFR function bins
            do i=1,N
-              Nran=poisson_numbers(i)
+              Nran=poisson_numbers(i) ! number of objects in this bin 
               xmax=x(i)+dx/2
               xmin=x(i)-dx/2
 
               allocate(radioflux_slice(Nfreq,Nran),samplex_slice(Nran),lums_slice(Nran),mstar_slice(Nran))
 
               do j=1,Nran
-                 samplex_slice(j)=rand()*(xmax-xmin)+xmin
-
+                 samplex_slice(j)=rand()*(xmax-xmin)+xmin  ! random generation of SRF
                  sfr=10.**samplex_slice(j)
 
-                 p=minloc(abs(samplex_slice(j)-SFRtab))
-                 mstar_slice(j)=mstartab(p(1))
+
+                 !                 p=minloc(abs(samplex_slice(j)-SFRtab))
+                 !                 mstar_slice(j)=mstartab(p(1)) ! possible improvement: use interpolation
 
 
-                 !flux= synchrotron + free-free+dust
-                 call Lsynch2(frequencies_rest,sfr,mstar_slice(j),Lsyn) !Lsyn is average value 
+                 !associate stellar mass to SFR with the lookup table
+                 !an intepolation is used between tabulated values and the galaxy's actual SFR
+                 mstar_slice(j)=interpol(samplex_slice(j),SFRtab,mstartab,nrows_sfrtab)
+
+
+
+
+                 call Lsynch2(frequencies_rest,sfr,mstar_slice(j),Lsyn) !Smith et al. 2021 eq 2 relation, with scatter
                  call Lff(frequencies_rest,sfr,Lfree) 
-                 !syn+ff with a scatter (evolution relation by Magnelli et al. )
-                 !                 delta=10.0000**(log10(Lsyn+Lfree)+random_normal()*0.4000+2.3500*(1.0000 -(1.0000 +z)**(-0.1200))) !TODO: eliminate magnelli
-                 ! delta=10.0000**(log10(Lsyn+Lfree)+random_normal()*0.4000+2.3500) 
-                 ! if (minval(delta)<0.) delta(:)=0. 
-                 ! Lums_slice(j)=dlog10(delta(i14)+Ld(i14)*sfr)
-                 !                 Radioflux_slice(:,j)=(delta+Ld*sfr)*conv_flux ! add dust SED
-                 Lums_slice(j)=dlog10(Lsyn(i14)+Lfree(i14)+Ld(i14)*sfr) 
-                 Radioflux_slice(:,j)=(Lsyn+Lfree+Ld*sfr)*conv_flux ! add dust SED
-                 if (Radioflux_slice(ilim,j)>= fluxlim*1000.) Nsample_surv= Nsample_surv+1  ! implement flux threshold
+
+                 Lums_slice(j)=dlog10(Lsyn(i14)+Lfree(i14)+Ld(i14)*sfr) ! 1.4 GHz luminosity. Used later for size modelling
+                 Radioflux_slice(:,j)=(Lsyn+Lfree+Ld*sfr)*conv_flux !flux= synchrotron + free-free+dust
+                 !scatter is included in Lsynch2 
+
+                 if (Radioflux_slice(ilim,j)>= fluxlim*1000.) Nsample_surv= Nsample_surv+1  ! implement flux selection
               enddo
 
-              !              print*,'Number of galaxies above flux limit',Nsample_surv
+
 
 
               if (buffer_free < Nsample_surv) then 
@@ -1580,12 +1490,14 @@ program sampler
            enddo
 
 
+
            deallocate(poisson_numbers)
 
 
 
            Nsample=buffer_size-buffer_free
            print*,'Number of galaxies above flux limit',Nsample
+
            if (Nsample==0) then
               !skip resize and output catalogue if no object is found
               deallocate(radioflux,samplex,lums,mstar)
@@ -1594,7 +1506,8 @@ program sampler
            ! resize Radioflux to the final sample size
            if (buffer_free /=0) then
               print*,'resize final flux ' 
-              allocate(radioflux_copy(Nfreq,buffer_size),samplex_copy(buffer_size),lums_copy(buffer_size),stat=iostat)
+              allocate(radioflux_copy(Nfreq,buffer_size),samplex_copy(buffer_size),&
+                   &lums_copy(buffer_size),mstar_copy(buffer_size),stat=iostat)
               if (iostat /=0) then
                  print*,'Allocation error'
                  stop
@@ -1602,6 +1515,7 @@ program sampler
               radioflux_copy=radioflux
               samplex_copy=samplex
               lums_copy=lums
+              mstar_copy=mstar
               deallocate(radioflux,samplex,lums,mstar,stat=iostat)
               if (iostat /=0) then
                  print*,'Deallocation error'
@@ -1617,18 +1531,18 @@ program sampler
               radioflux(:,:)=radioflux_copy(:,1:Nsample)
               samplex(:)=samplex_copy(1:Nsample)
               lums(:)=lums_copy(1:Nsample)
-              deallocate(radioflux_copy,samplex_copy,lums_copy,stat=iostat)
+              mstar(:)=mstar_copy(1:Nsample)
+              deallocate(radioflux_copy,samplex_copy,lums_copy,mstar_copy,stat=iostat)
               if (iostat /=0) then
                  print*,'Deallocation error'
                  stop
               endif
            endif
 
-           !           print*,radioflux(ilim,:)
-           !           stop
+
            print*,'SFRs and flux generated'
-           ! TODO 
-           !stop
+
+
            !vectors for polarization model
            allocate(Polaflux(Nfreq,Nsample),inclinations(Nsample)) !polarized flux and view angle 
 
@@ -1636,8 +1550,6 @@ program sampler
            do i=1,Nsample
               cos_i=rand()
               inclinations(i)=acos(cos_i)*180./pi
-              !sin_i=rand()
-              !inclinations(i)=asin(sin_i)*180./pi
            enddo
 
            ! polarized flux
@@ -1670,55 +1582,18 @@ program sampler
            if (ii ==1) optclass(:)=2 !spheroids -> elliptical, late-type -> spiral
 
 
-           ! galaxies as satellites to big haloes:
-           ! read mass probability distribution
-
-           !           filename='../../TRECS_Inputs/AbundanceMatch/results_satellites/Satelliteprob_z'//zstr//'.txt' 
-
-           !           Ncolumns=2
-           !           nrows=rows_number(filename,1,nskip)
-
-           !           allocate(data2(nrows,ncolumns),x2(nrows),px2(nrows)) 
-
-           !           call read_columns(filename,2,nrows,Ncolumns,nskip,data2)
-           !           x2=data2(:,1)
-           !           px2=data2(:,2)
-
-
-           ! initialise mass for all galaxies as satellite galaxies
-           !call poisson_constrained(iseed,x2,Px2,5.,15.,Darkmass_halo,Nsample)
-
-           !           if (Nsample >=100) then 
-           !              call poisson_constrained(iseed,x2,Px2,5.,15.,Darkmass_halo,Nsample)
-           !           else
-           !              Nsample100=100
-           !              sample100(:)=0.
-           !              call poisson_constrained(iseed,x2,Px2,5.,15.,sample100,Nsample100)
-           !              call reordersample(iseed,sample100)
-           !              do i=1,Nsample
-           !                 darkmass_halo(i)=sample100(i)
-           !              enddo
-           !           endif
-
-
-
-           !mass is that of the halo hosting a satellite
-           !           deallocate(x2,px2,data2)
-
-
-
            do i=1,Nsample
               dm_model=interpol(lums(i),L14,masses_L14,Nfunction)
-              ! satellite_flag(i)=dm_model/darkmass_halo(i) ! galaxy/halo mass ratio
-              Darkmass(i)=dm_model ! halo mass to associate with BGC instead of satellite         
-              !satellite_flag(i)=dm_model/darkmass_halo(i) ! galaxy/halo mass ratio  
-              !if (dm_model >=minmass_cone) satellite_flag(i)=0 ! only galaxies with mass smaller that minimum halo mass in the lightcone are kept as satellites
+
+              Darkmass(i)=dm_model ! dark halo mass 
+
 
               latitudes(i)=(rand()-0.5)*sim_side
               longitudes(i)=(rand()-0.5)*sim_side
               z_gals(i)=rand()*(zhigh-zlow)+zlow
 
-              if (z_gals(i) <=1.5) himass(i)=(0.9-z_gals(i)*0.6)*samplex(i)+9.3+random_normal()*0.3 !derived by comparing mass distribution of hi and continuum.
+              if (z_gals(i) <=0.525) himass(i)=(0.9-z_gals(i)*0.4)*samplex(i)+9.15+0.075*z_gals(i)+random_normal()*0.3 !derived by comparing mass distribution of hi and continuum.
+              !TODO: add C-EVOL dependence to normalization
 
               !if (z_gals(i) <=1.5) himass(i)=(0.9-z_gals(i)*0.6)*samplex(i)+9.5+random_normal()*0.3 !derived by comparing mass distribution of hi and continuum.
               !modelling not done for z>1.5 TEST WITH NO SCATTER TO GET BETTER 
@@ -1728,14 +1603,6 @@ program sampler
               !ORIG if (ii ==1) himass(i)=0.75*samplex(i)+9.25+random_normal()*0.23 ! alphalpha correlation fit, z=0 !optclass(:)=2 !spheroids -> elliptical, late-type -> spiral
               !ORIG himass(i)=himass(i)-0.4*z_gals(i) ! correction based on matching abundances
            enddo
-
-
-           !           Nsample_mass=sum(satellite_flag)
-           !           print*,'number of satellite galaxies',Nsample_mass
-
-
-
-           !           deallocate(satellite_flag,darkmass_halo)
 
 
            !associate size to objects
@@ -1755,7 +1622,7 @@ program sampler
            !preparing to output the data in catalogue format
            jstart=Nsample_old+1
            if (.not. allocated(catout)) then
-              print*,'qui',Ncat_common,Nsample
+
               !start filling the output catalogue array
               allocate(catout(Ncat_common,Nsample),stat=iostat)
               if (iostat/=0) then
@@ -1781,22 +1648,23 @@ program sampler
            catout(2,jstart:jstart+Nsample-1)=samplex(1:Nsample)        !logSFR
            catout(3:nfreq_out+2,jstart:jstart+Nsample-1)=radioflux(4:Nfreq,:)  ! total intensity
            catout(nfreq_out+3:2*nfreq_out+2,jstart:jstart+Nsample-1)=polaflux(4:Nfreq,:)  !polarization
-           catout(2*nfreq_out+3,jstart:jstart+Nsample-1)=darkmass      ! mass
-           catout(2*nfreq_out+4,jstart:jstart+Nsample-1)=himass      ! mass
-           catout(2*nfreq_out+5,jstart:jstart+Nsample-1)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
-           catout(2*nfreq_out+6,jstart:jstart+Nsample-1)=longitudes
-           catout(2*nfreq_out+7,jstart:jstart+Nsample-1)=0. ! spherical coordinates - to be filled by wrapper
-           catout(2*nfreq_out+8,jstart:jstart+Nsample-1)=0. 
-           catout(2*nfreq_out+9,jstart:jstart+Nsample-1)=z_gals
-           catout(2*nfreq_out+10,jstart:jstart+Nsample-1)=sizes  
-           catout(2*nfreq_out+11,jstart:jstart+Nsample-1)=inclinations
-           catout(2*nfreq_out+12,jstart:jstart+Nsample-1)=qrat
-           catout(2*nfreq_out+13,jstart:jstart+Nsample-1)=ellipticity1  !bmaj
-           catout(2*nfreq_out+14,jstart:jstart+Nsample-1)=ellipticity2  !bmin
-           catout(2*nfreq_out+15,jstart:jstart+Nsample-1)=thetas !PA
-           catout(2*nfreq_out+16,jstart:jstart+Nsample-1)=-100. !spot dist
-           catout(2*nfreq_out+17,jstart:jstart+Nsample-1)=ii !SGSs
-           catout(2*nfreq_out+18,jstart:jstart+Nsample-1)=optclass !early/late-type
+           catout(2*nfreq_out+3,jstart:jstart+Nsample-1)=darkmass      ! dark mass
+           catout(2*nfreq_out+4,jstart:jstart+Nsample-1)=mstar      ! stellar mass
+           catout(2*nfreq_out+5,jstart:jstart+Nsample-1)=himass      ! HI mass
+           catout(2*nfreq_out+6,jstart:jstart+Nsample-1)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
+           catout(2*nfreq_out+7,jstart:jstart+Nsample-1)=longitudes
+           catout(2*nfreq_out+8,jstart:jstart+Nsample-1)=0. ! spherical coordinates - to be filled by wrapper
+           catout(2*nfreq_out+9,jstart:jstart+Nsample-1)=0. 
+           catout(2*nfreq_out+10,jstart:jstart+Nsample-1)=z_gals
+           catout(2*nfreq_out+11,jstart:jstart+Nsample-1)=sizes  
+           catout(2*nfreq_out+12,jstart:jstart+Nsample-1)=inclinations
+           catout(2*nfreq_out+13,jstart:jstart+Nsample-1)=qrat
+           catout(2*nfreq_out+14,jstart:jstart+Nsample-1)=ellipticity1  !bmaj
+           catout(2*nfreq_out+15,jstart:jstart+Nsample-1)=ellipticity2  !bmin
+           catout(2*nfreq_out+16,jstart:jstart+Nsample-1)=thetas !PA
+           catout(2*nfreq_out+17,jstart:jstart+Nsample-1)=-100. !spot dist
+           catout(2*nfreq_out+18,jstart:jstart+Nsample-1)=ii !SGSs
+           catout(2*nfreq_out+19,jstart:jstart+Nsample-1)=optclass !early/late-type
 
            ! compute intrinsic luminosities and store them in the catalogue if requested
            if (save_lums ==1) then
@@ -1832,7 +1700,7 @@ program sampler
               enddo
 
 
-              catout(2*nfreq_out+18:3*nfreq_out+17,jstart:jstart+Nsample-1)=lums_save(4:Nfreq,:)
+              catout(2*nfreq_out+20:3*nfreq_out+19,jstart:jstart+Nsample-1)=lums_save(4:Nfreq,:)
 
               deallocate(lums_save,lums_i,freq_rest)
            endif
