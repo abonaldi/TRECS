@@ -63,13 +63,26 @@ tag='hi_15sep'
 folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/cross_test/'
 folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/'
 
-tag='cross_17sep'
+tag='cross_6dec'
 
 
-folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_smith/test2/'
-folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_smith/'
+folder1='/home/a.bonaldi/data-cold-for-backup/SDC3/TRECS_cats/run1/'
+folder2='/home/a.bonaldi/data-cold-for-backup/SDC3/TRECS_cats/'
 
-tag='test2'
+tag='SDC3_v1'
+
+folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_magnetism/run1/'
+folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_magnetism/'
+
+
+
+tag='magnetism_v1'
+
+
+folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_lsync/test1/'
+folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_lsync/'
+
+tag='test1'
 
 
 

@@ -30,13 +30,10 @@ program sampler
   REAL, PARAMETER :: pc=3.0856776E18 !Pc in cm
   real, parameter::sterad_deg=3283. 
   REAL, PARAMETER :: Mpc=10.**6*pc
-!!$  integer,parameter::Nmbins=10
-!!$  integer,parameter::mass_scatter=1
-!!$  real(sp),parameter::flagvalue=-100.
+  real, parameter::  logmstar_0=9.94, alpha=-1.25,phistar=4.5e-3!, C_evol=0.075 ! Jones et al. 2018 mass function parameters
 
   !character variables
   character(LEN=filenamelen)::paramfile,description,dummy,outdir,MHI_filename,MHI2Mh_filename
-  real(dp)::nu,deltanu,sfr,mn,mx,volume,integ,volumetot,fom,fom_old,z_i
   character(LEN=filenamelen)::chline,filestat,cat_filename
   character(LEN=16),allocatable::tagnames(:),tunit(:),tform(:)
   !character(LEN=10)::names(3)
@@ -50,7 +47,7 @@ program sampler
   !single precision variables
   real(sp)::z_min,z_max,mu,clock_time,coo_max,coo_min
   real(sp)::masslim,fluxlim,dm_model,dim,sin_i,cos_i
-  real(sp)::q,q2,d_a,flux,flux_conv,rn
+  real(sp)::q,q2,d_a,flux,flux_conv,rn,C_evol
   real(sp),allocatable::samplex(:),samplex_slice(:),samplex_copy(:),redshifts(:)
   real(sp),allocatable::zall_slice(:),zall_copy(:)
   real(sp),allocatable::catout(:,:),z_gals(:),sizes(:),fluxes(:),fluxes_slice(:),fluxes_copy(:)
@@ -59,14 +56,16 @@ program sampler
   real(sp),allocatable::MHItab(:),Mhalotab(:)
 
 !!$  !double precision variables
+  real(dp)::nu,deltanu,sfr,mn,mx,volume,integ,volumetot,fom,fom_old,z_i,mhi,mstar,logmstar,phi
   real(dp)::sim_area,skyfrac,d_l
   real(dp)::sim_side
   real(dp),allocatable::data(:,:),x(:),px(:)
+!  real(dp)::x(100),px(100)
   real(dp)::Ngen_db,norm
   real(dp)::dx,xmin,xmax,zlow,zhigh,z
   integer*8::Nsample,test
   integer::buffer_size,buffer_free,jbuf,buffer_free_old,buffer_size_old,l_outdir
-  integer::Nsample_old,Nfunction,Nsample_surv,nreds_out,nreds,Ncat_HI,nrows,Ncolumns,nrows_lf,nskip,zi
+  integer::Nsample_old,Nfunction,Nsample_surv,nreds_out,nreds,Ncat_HI,nrows,Ncolumns,nrows_mf,nskip,zi
   integer(4) :: ic4, crate4, cmax4!,ni,sum_plus,p14(1),i14,ilim,i48,p(1),p_i,try
   integer::seed(34),iseed,iostat,seed_fix
   INTEGER, DIMENSION(8,2) :: values_time
@@ -118,6 +117,10 @@ program sampler
   fluxlim = parse_double(handle, 'fluxlim', default=1.d0, descr=description)
 
   description = concatnl( &
+       & " Enter the C_evol parameter: ")
+  C_evol = parse_real(handle, 'C_evol', default=0.075, descr=description)
+  
+  description = concatnl( &
        & " Enter the minimum redhift to consider: ")
   z_min = parse_real(handle, 'z_min', default=0., vmin=0., descr=description)
 
@@ -131,7 +134,7 @@ program sampler
 
 
   description = concatnl( &
-       & " Do you want to skip the AGN simulation (0=no, 1=yes)")
+       & " Insert seed")
   seed_fix = parse_int(handle, 'seed', default=-1, descr=description)
   ! end reading input parameters
 
@@ -289,6 +292,7 @@ program sampler
            zhigh=(redshifts(zi+1)+z)/2.
         end select
 
+
         print*,'************************'
         print*,'HI: Processing redshift',z,' Range',zlow,zhigh
         print*,'************************'
@@ -302,21 +306,45 @@ program sampler
         !relation between L14 and mass of dark halo, from abundance matching
         ! reading from a file
 
-        !Reading HI mass functions
-        MHI_filename='../../TRECS_Inputs/MHIF/MHIF_z'//zstr//'.dat'  
+!!$
+!!$        ! start part to be removed:
+!!$        !Reading HI mass functions
+!!$        MHI_filename='../../TRECS_Inputs/MHIF/MHIF_z'//zstr//'.dat'  
+!!$
+!!$        Ncolumns=2
+!!$        nrows=rows_number(MHI_filename,1,nskip)
+!!$        Nrows_mf=nrows
+!!$
+!!$        allocate(data(nrows,ncolumns),x(nrows),px(nrows))
+!!$        call read_columns(MHI_filename,2,nrows,Ncolumns,nskip,data)
+!!$        !data(:,1) =log(MHI)
+!!$        !data(:,2) =log(phitot)
+!!$
+!!$        x=data(:,1) !log(MHI)
+!!$        px=10.**data(:,2)
+!!$        
 
-        Ncolumns=2
-        nrows=rows_number(MHI_filename,1,nskip)
-        Nrows_lf=nrows
+        ! start new part: mass function generated here
 
-        allocate(data(nrows,ncolumns),x(nrows),px(nrows))
-        call read_columns(MHI_filename,2,nrows,Ncolumns,nskip,data)
-        !data(:,1) =log(MHI)
-        !data(:,2) =log(phitot)
+        ! generate HI mass function according to Jones et al. 2018 eq 3
+        !nrows=100
+        !allocate(x(nrows),px(nrows))
 
-        x=data(:,1) !log(MHI)
-        px=10.**data(:,2)
+        Nrows_mf=100  ! mass finction vecors
+        allocate(x(nrows_mf),px(nrows_mf))
 
+        !logMhi vector for the computation of the mass function
+        x = (/ (real(i), i=0,nrows_mf-1 ) /)
+        x=x/10.+4.
+
+        logmstar=logmstar_0+C_evol*z ! redshift evolution of the mstar parameter
+        mstar=10.**logmstar
+
+        !Jones et al. (2018) HI mass function with the redshift evolution of mstar
+        do i=1,nrows_mf
+           mhi=10.**x(i)
+           px(i)=dble(log(10.)*phistar*(mhi/mstar)**(alpha+1.)*exp(-mhi/mstar))
+        enddo
 
         Nsample_old=0
         buffer_size=1000
@@ -330,7 +358,7 @@ program sampler
 
         norm=volume*integ/sum(px) ! normalisation for histogram 
         Ngen_db=volume*integ
-        N=Nrows_lf 
+        N=Nrows_mf 
 
         allocate(poisson_numbers(N),stat=iostat)
 
@@ -448,7 +476,7 @@ program sampler
 
         if (Nsample==0) then
            !skip resize and output catalogue if no object is found
-           deallocate(samplex,z_gals,fluxes,x,px,data)
+           deallocate(samplex,z_gals,fluxes,x,px)
            goto 500 
         endif
 
@@ -506,7 +534,7 @@ program sampler
 !!$           enddo
 !!$           ! end ellipticities
 
-        deallocate(x,px,data)
+        deallocate(x,px)
 
         !relation between HI and mass of dark halo, from abundance matching
         ! reading from a file

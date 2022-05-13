@@ -797,7 +797,7 @@ end subroutine pola_SFGS
 
   ! functions to compute radio luminosity from SFR 
   ! synchrotron emission
-subroutine Lsynch(nu,sfr,L)
+subroutine Lsynch_old(nu,sfr,L)
     implicit none
     ! synchrotron luminosity for one galaxy at several frequencies
     real(dp),intent(out)::L(:)
@@ -814,67 +814,34 @@ subroutine Lsynch(nu,sfr,L)
    
     L=L*normstar/((normstar/norm/sfr)**beta+(normstar/norm/sfr))  ! erg/s/Hz
 
-  end subroutine Lsynch
+  end subroutine Lsynch_old
 
 
 
-  !New model from Smith et al. Linear relation between SFR L, mstar dependence
-  ! functions to compute radio luminosity from SFR 
+  ! New model from Smith et al. Linear relation between SFR L, mstar dependence
+  ! New frequency dependence as a curved power law. Parameters adjusted to give agreement with observed counts from 150 MHz to 20 GHz.
+  
   ! synchrotron emission
-subroutine Lsynch2(nu,sfr,mstar,L)
+subroutine Lsynch(nu,sfr,mstar,L)
     implicit none
     ! synchrotron luminosity for one galaxy at several frequencies
     real(dp),intent(out)::L(:)
     real(dp),intent(in)::nu(:),sfr
     real(sp),intent(in)::mstar
     !real(dp),parameter::normstar=1.68e28,norm=1.9e28,beta=3
-    real(sp),parameter::logL0=22.1,beta=0.85,gamma=0.402
-    !real(sp),parameter::nu0=1000.,si=-0.85,dsi=-0.07,norm=0.256
-!    real(sp),parameter::nu0=1400.,si=-0.85,dsi=-0.1,norm=0.15    !smith0
-    real(sp),parameter::nu0=1400.,si=-0.85,dsi=-0.08,norm=0.15    !smith1
-    !real(sp),parameter::logL0=22.181,beta=1.041,gamma=0.402
+    real(sp),parameter::logL0=22.1,beta=0.85,gamma=0.402,dlogL0=-0.82 !Smith et al. 2020 eq 2 with normalization correction
+    real(sp),parameter::nu0=1600.,si=-0.85,dsi=-0.1
     real(sp)::logL,L14
 
-    !Mancuso et al. 2015 eq 3
-    !L=(nu/1000.)**(-0.85)*(1.+(nu/20000.)**0.5)**(-1.) !baseline Mancuso model
-    !L=L/((150./1000)**(-0.85)*(1.+(150./20000.)**0.5)**(-1.)) !baseline Mancuso model
-
-    !L=(nu/1000.)**(-0.85-0.07*log(nu/1000.))/1.25 !curved spectrum consistent with Mancuso at nu>1.4
-
     !frequency dependence - Bonaldi et al. 2022
-
-
-    
     L=(nu/nu0)**(si+dsi*log(nu/nu0)) !curved spectrum consistent with lower normalization wrt Mancuso - good agreement @ 150 MHz
+        
+    !Smith et al. 2020 eq (2) with normalization correction
+    logL=(logL0+dlogL0 + random_normal()*4.e-3)+(beta + random_normal()*5.e-3)*log10(sfr)+(gamma+random_normal()*5.e-3)*(mstar-10)
 
-    ! this is normalised to 1 at 1400 MHz
-    L14=(1400./nu0)**(si+dsi*log(1400./nu0))
-    L=L/L14
-    
-    
-    L=L*norm
-    !L=L*norm/(1400./nu0)**(si+dsi*log(1400./nu0))
-    !print*,((150./nu0)**(si+dsi*log(150./nu0)))
-    !print*,nu
-    !print*,L
-!stop
-    !L=L*normstar/((normstar/norm/sfr)**beta+(normstar/norm/sfr))  ! erg/s/Hz
-
-    !smith et al. 2020 eq 2
-    logL=(logL0 + random_normal()*4.e-3)+(beta + random_normal()*5.e-3)*log10(sfr)+(gamma+random_normal()*5.e-3)*(mstar-10)
-
-!!$    print*,mstar
-!!$    stop
-    
     L=L*1.e7*10.**(logL) !1e7 is the conversion from W/Hz to erg/s/Hz
-    !print*,mstar
-    !print*,nu
-    !print*,L
-    !stop
 
-    !log10(L150 MHz/W Hz−1)=(0.90±0.01) log10(SFR/M⊙ yr−1)+(0.33±0.04) log10(M/1010M⊙)+22.22±0.02
-    !W=1.e7 erg/s
-  end subroutine Lsynch2
+  end subroutine Lsynch
 
 
 

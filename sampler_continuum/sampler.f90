@@ -1365,7 +1365,7 @@ program sampler
               p=minloc(abs(x(iii)-SFRtab))
               m_star=mstartab(p(1))
 
-              call Lsynch2(frequencies_rest,sfr,m_star,Lsyn) !Lsyn with mass dependence
+              call Lsynch(frequencies_rest,sfr,m_star,Lsyn) !Lsyn with mass dependence
               call Lff(frequencies_rest,sfr,Lfree)
               test=(Lsyn(ilim)+Lfree(ilim)+Ld(ilim)*sfr)*conv_flux ! add dust SED
               if (test < fluxlim*1000.*0.95) px(iii)=0.  ! threshold below the flux limit to allow for scatter
@@ -1437,12 +1437,12 @@ program sampler
 
 
 
-                 call Lsynch2(frequencies_rest,sfr,mstar_slice(j),Lsyn) !Smith et al. 2021 eq 2 relation, with scatter
+                 call Lsynch(frequencies_rest,sfr,mstar_slice(j),Lsyn) !Smith et al. 2021 eq 2 relation, with scatter
                  call Lff(frequencies_rest,sfr,Lfree) 
 
                  Lums_slice(j)=dlog10(Lsyn(i14)+Lfree(i14)+Ld(i14)*sfr) ! 1.4 GHz luminosity. Used later for size modelling
                  Radioflux_slice(:,j)=(Lsyn+Lfree+Ld*sfr)*conv_flux !flux= synchrotron + free-free+dust
-                 !scatter is included in Lsynch2 
+                 !scatter is included in Lsynch 
 
                  if (Radioflux_slice(ilim,j)>= fluxlim*1000.) Nsample_surv= Nsample_surv+1  ! implement flux selection
               enddo
