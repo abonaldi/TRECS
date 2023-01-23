@@ -1,7 +1,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This program is part of the T-RECS code
 ! Author: A. Bonaldi
-! see Bonaldi et al. (2018) MNRAS for more details
+! see Bonaldi et al. (2022) MNRAS for more details
 ! generate samples of HI galaxies from models
 ! save outputs to files per redshift bin 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -30,8 +30,8 @@ program sampler
   REAL, PARAMETER :: pc=3.0856776E18 !Pc in cm
   real, parameter::sterad_deg=3283. 
   REAL, PARAMETER :: Mpc=10.**6*pc
-  real, parameter::  logmstar_0=9.94, alpha=-1.25,phistar=4.5e-3!, C_evol=0.075 ! Jones et al. 2018 mass function parameters
-
+  real, parameter::  logmstar_0=9.94, alpha=-1.25,phistar=4.5e-3!, ! Jones et al. 2018 mass function parameters
+  real, parameter::  A=2.902, B=5.439,sigma_logv=0.125!, ! Katz et al. 2018 Mh-vflat relation 
   !character variables
   character(LEN=filenamelen)::paramfile,description,dummy,outdir,MHI_filename,MHI2Mh_filename
   character(LEN=filenamelen)::chline,filestat,cat_filename
@@ -47,13 +47,13 @@ program sampler
   !single precision variables
   real(sp)::z_min,z_max,mu,clock_time,coo_max,coo_min
   real(sp)::masslim,fluxlim,dm_model,dim,sin_i,cos_i
-  real(sp)::q,q2,d_a,flux,flux_conv,rn,C_evol
+  real(sp)::q,q2,d_a,flux,flux_conv,rn,C_evol,log_vflat
   real(sp),allocatable::samplex(:),samplex_slice(:),samplex_copy(:),redshifts(:)
   real(sp),allocatable::zall_slice(:),zall_copy(:)
   real(sp),allocatable::catout(:,:),z_gals(:),sizes(:),fluxes(:),fluxes_slice(:),fluxes_copy(:)
-  real(sp),allocatable::darkmass(:),latitudes(:),longitudes(:),inclinations(:)
+  real(sp),allocatable::darkmass(:),latitudes(:),longitudes(:),inclinations(:),w50(:),vmax(:)
   real(sp),allocatable::bmaj(:),bmin(:),pa(:),qrat(:)
-  real(sp),allocatable::MHItab(:),Mhalotab(:)
+  !real(sp),allocatable::MHItab(:),Mhalotab(:)
 
 !!$  !double precision variables
   real(dp)::nu,deltanu,sfr,mn,mx,volume,integ,volumetot,fom,fom_old,z_i,mhi,mstar,logmstar,phi
@@ -185,9 +185,27 @@ program sampler
 
 
   !structure of the catalogue
-  Ncat_hi=15 ! hi mass, dark mass, latitude, longitude
+  Ncat_hi=17 !
+  !hi mass
+  !hi flux
+  !dark mass,
+  !proj-latitude
+  !proj-longitude
+  !latitude
+  !longitude
+  !redshift
+  !size
+  !inclination
+  !plateau circular velocity
+  !HI line width
+  !axis ratio
+  !Bmaj
+  !Bmin
+  !PA
+  !Optical morphological type
+  
 
-  !creating tag names for the catalogue
+  !creating tag names for the catalogue and units
   allocate(tagnames(Ncat_hi),tunit(Ncat_hi),tform(Ncat_hi))
   j=1
   tagnames(j)='MHI'
@@ -219,6 +237,12 @@ program sampler
   j=j+1
   tagnames(j)='inclination'
   tunit(j)='degs'
+  j=j+1
+  tagnames(j)='v_max'
+  tunit(j)='Km/s'
+  j=j+1
+  tagnames(j)='w50'
+  tunit(j)='Km/s'
   j=j+1
   tagnames(j)='axis ratio'
   tunit(j)='none'
@@ -303,34 +327,10 @@ program sampler
         volume=volumetot*skyfrac  !volume corresponding to FoV
         print*,'volume=',volume
 
-        !relation between L14 and mass of dark halo, from abundance matching
-        ! reading from a file
-
-!!$
-!!$        ! start part to be removed:
-!!$        !Reading HI mass functions
-!!$        MHI_filename='../../TRECS_Inputs/MHIF/MHIF_z'//zstr//'.dat'  
-!!$
-!!$        Ncolumns=2
-!!$        nrows=rows_number(MHI_filename,1,nskip)
-!!$        Nrows_mf=nrows
-!!$
-!!$        allocate(data(nrows,ncolumns),x(nrows),px(nrows))
-!!$        call read_columns(MHI_filename,2,nrows,Ncolumns,nskip,data)
-!!$        !data(:,1) =log(MHI)
-!!$        !data(:,2) =log(phitot)
-!!$
-!!$        x=data(:,1) !log(MHI)
-!!$        px=10.**data(:,2)
-!!$        
-
-        ! start new part: mass function generated here
 
         ! generate HI mass function according to Jones et al. 2018 eq 3
-        !nrows=100
-        !allocate(x(nrows),px(nrows))
-
-        Nrows_mf=100  ! mass finction vecors
+ 
+        Nrows_mf=100  ! mass function vectors
         allocate(x(nrows_mf),px(nrows_mf))
 
         !logMhi vector for the computation of the mass function
@@ -398,9 +398,6 @@ program sampler
 
         Nsample_surv=0
 
-        !print*,poisson_numbers,sum(poisson_numbers)
-
-
 
         do i=1,N
            Nran=poisson_numbers(i)
@@ -414,8 +411,6 @@ program sampler
 
               do j=1,Nran
                  samplex_slice(j)=rand()*(xmax-xmin)+xmin
-                 !                 samplex_slice(j)=random_normal()*(xmax-xmin)+xmin
-
 
                  zall_slice(j)=rand()*(zhigh-zlow)+zlow
 
@@ -520,49 +515,28 @@ program sampler
         allocate(Darkmass(Nsample),latitudes(Nsample),&
              &longitudes(Nsample),sizes(Nsample),&
              &inclinations(Nsample),qrat(Nsample),bmaj(Nsample),&
-             &bmin(Nsample),pa(Nsample),stat=iostat)
+             &bmin(Nsample),pa(Nsample),vmax(Nsample),w50(Nsample),stat=iostat)
         if (iostat/=0) then
            print*,'sampler: allocation error'
            stop
         endif
 
-!!$
-!!$           do i=1,Nsample
-!!$              th=rand()*2.*pi*2. !2theta
-!!$              ellipticity2(i)=ellipticity1(i)*sin(th)
-!!$              ellipticity1(i)=ellipticity1(i)*cos(th)
-!!$           enddo
-!!$           ! end ellipticities
-
         deallocate(x,px)
-
-        !relation between HI and mass of dark halo, from abundance matching
-        ! reading from a file
-        MHI2Mh_filename='../../TRECS_Inputs/AbundanceMatch/results_HI/HI2DM_z'//zstr//'.txt' 
-        Ncolumns=2
-        nrows=rows_number(MHI2Mh_filename,1,nskip)
-        Nfunction=nrows
-
-        allocate(data(nrows,ncolumns),MHItab(nrows),Mhalotab(nrows))
-
-        call read_columns(MHI2Mh_filename,2,nrows,Ncolumns,nskip,data)
-        MHItab=data(:,1)
-        Mhalotab=data(:,2)
-        deallocate(data)
-        !        minmass_cone=9.2 ! this is the minimum halo mass in the lightcone
-
 
 
 
         do i=1,Nsample
-           dm_model=interpol(samplex(i),MHItab,Mhalotab,Nfunction)
-           Darkmass(i)=dm_model ! halo mass to associate with BGC instead of satellite         
 
+
+           dm_model=(10.**samplex(i))**(1./1.2)*3162.28 ! low-mass limit Baugh et al. (2019)
+           
+           Darkmass(i)=log10(dm_model)
+           
            latitudes(i)=(rand()-0.5)*sim_side  ! random coordinates
            longitudes(i)=(rand()-0.5)*sim_side
            z_i=dble(z_gals(i))
 
-           !dim=(0.506+random_normal()*0.003)*samplex(i)-3.293+random_normal()*0.009 !log phys size kpc , Wang et al. 2016 eq 2.
+          
 
            !Naluminsa et al. (2021)
            !logM_HI=(1.95 pm 0.03)log D_HI +(6.5 pm 0.04)
@@ -571,18 +545,14 @@ program sampler
            dim=(0.51+random_normal()*0.01)*samplex(i)-3.33+random_normal()*0.03 !log phys size kpc , Naluminsa et al. (2021)
            
            Dim=10.**dim/1000./2. !size in Mpc, radius instead of diameter
-           sizes(i)=theta(dim,z_i)! apparent size. 
-           !old: the 0.2 factor converts to exponential scale radius, wang et al. 2016 section 3.1
-
-
-
-           !TODO: change this 
-
+           sizes(i)=theta_p(dim,z_i)! apparent size. 
+           
+           !generate inclination 
            cos_i=rand()
            inclinations(i)=acos(cos_i)*180./pi
-           !the HI size is smaller than the radio size computed from here, but this could be due to the DM mass  modelled here. check after xmatch. 
 
-           ! all HI galaxies have spiral morphology. start from an intrinsic axis ratio of 0.2
+
+           !generate ellipticity starting from inclination - assumption on the 3D morphology. all HI galaxies have spiral morphology. start from an intrinsic axis ratio of 0.2
            q=0.2+random_normal()*0.05 
            q2=q**2 ! square alpha
            q=sqrt(q2+(cos(inclinations(i)))**2.*(1.-q2)) ! observed axis ratio, linked to inclination
@@ -596,6 +566,11 @@ program sampler
 
            bmin(i)=q*bmaj(i)     ! apparent bmin
            pa(i)=rand()*360. !random PA in degs
+
+           log_vflat=1./A*(darkmass(i)-B)+random_normal()*sigma_ab
+           vmax(i)=10.**log_vflat
+           w50(i)=vmax(i)*2.*sin(inclinations(i)*pi/180.)
+           
         enddo
 
         !preparing to output the data in catalogue format
@@ -610,7 +585,7 @@ program sampler
 
         catout(1,:)=samplex(1:Nsample)       ! HI mass
         catout(2,:)=fluxes*1000. ! HI flux mJy/Hz
-        catout(3,:)=darkmass       
+        catout(3,:)=darkmass
         catout(4,:)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
         catout(5,:)=longitudes
         catout(6,:)=0. ! spherical coordinates - to be filled by wrapper
@@ -618,18 +593,18 @@ program sampler
         catout(8,:)=z_gals
         catout(9,:)=sizes  
         catout(10,:)=inclinations
-        catout(11,:)=qrat
-        catout(12,:)=bmaj
-        catout(13,:)=bmin
-        catout(14,:)=pa
-        catout(15,:)=2. ! all HI galaxies have spiral morphology
+        catout(11,:)=vmax
+        catout(12,:)=w50
+        catout(13,:)=qrat
+        catout(14,:)=bmaj
+        catout(15,:)=bmin
+        catout(16,:)=pa
+        catout(17,:)=2. ! all HI galaxies have spiral morphology - can be changed after cross-matching with continuum
 
-        ! compute intrinsic luminosities and store them in the catalogue if requested
-
-
+    
         deallocate(samplex,fluxes,darkmass,&
-             &latitudes,longitudes,z_gals,sizes,MHItab,Mhalotab,&
-             &inclinations,pa,qrat,bmin,bmaj,stat=iostat)
+             &latitudes,longitudes,z_gals,sizes,&
+             &inclinations,pa,qrat,bmin,bmaj,w50,vmax,stat=iostat)
         if (iostat/=0) then
            print*,'sampler: deallocation error'
 

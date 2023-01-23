@@ -38,11 +38,11 @@ path_HI='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/hi/' #pat
 tag='HI'      #tag in the file name of HI catalogues
 sim_side=5.   #size of square HI simulation (degs)
 
-path_cont='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/continuum_test/' #path of continuum catalogue
+path_cont='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/continuum/' #path of continuum catalogue
 sim_side_c=5. #size of square continuum simulation (degs)
 tag_c='continuum' #tag in the file name of continuum catalogues
 
-path_out='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/cross_test/' #path of output catalogues
+path_out='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/cross/' #path of output catalogues
 
 ####end general settings
 

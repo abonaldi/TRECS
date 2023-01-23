@@ -1,14 +1,10 @@
-!!!! test!! trying to get AGNs and SFGs on the samsme output file (ione single loop on redshift)
-! compare with sampler_new.f90 for the last stable version with the wto separated loops
-
-
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This program is part of the T-RECS code
 ! Author: A. Bonaldi
-! see Bonaldi et al. (2018) MNRAS for more details
+! see Bonaldi et al. (2022) MNRAS for more details
 ! generate samples of radio galaxies from models
-! save outputs to files per redshift bin and per galaxy sub-population
+! save outputs to files per redshift bin 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 program sampler
@@ -217,7 +213,7 @@ program sampler
   filename8='../../TRECS_Inputs/LF/CharLum/Characteristic_Luminosity/z_bins.dat'
 
   !Intrinsic AGN size distribution from DiPompeo et al.
-  filename9='../../TRECS_Inputs/LF/AGN_sizes.dat'  
+  filename9='../../TRECS_Inputs/LF/AGN_sizes_new.dat'  
 
   !   SFGs
   !
@@ -629,11 +625,16 @@ program sampler
            ! view angle for the sources depending on the sub-population
            select case(ii)
            case(3)
-              theta_low=sin(5.*pi/180.)
-              theta_high=sin(90.*pi/180.)
+
+              theta_low=cos(90.*pi/180.)
+              theta_high=cos(5.*pi/180.)
+              
+
            case default
-              theta_high=sin(5.*pi/180.)
-              theta_low=sin(0.)
+
+              theta_high=cos(0.)
+              theta_low=cos(5.*pi/180.)
+              
            end select
 
            !redshift bin is split into thin redshift slices
@@ -679,7 +680,7 @@ program sampler
 
                  allocate(samplex_slice(Nsample),radioflux_slice(Nfreq,Nsample))! arrays where to store objects
 
-
+                 
                  !assigning luminosity to the objects
                  iii=1
                  do i=1,Nrows_lf
@@ -867,8 +868,9 @@ program sampler
 
            !AGN size model
            !load file with intrinsic size distribution
-           !from DiPompeo et al.
-
+           !from DiPompeo et al. 2013 Table 2 
+           ! for flat-spectrum AGN Di Pompeo et al. 2013 Table 2 "narrow"
+           ! for steep-spectrum AGN Di Pompeo et al. 2013 Table 2 "wide" 
            Ncolumns=4
            nrows=rows_number(filename9,1,nskip)
 
@@ -882,6 +884,8 @@ program sampler
 
            x2=data2(:,1) !size Kpc
            px2=data2(:,ii+1) !N(size) (different model for flat and steep-spectrum)
+           ! in different columns of the file
+
            dx2=abs(x2(2)-x2(1))
            N=Nrows
 
@@ -1123,13 +1127,13 @@ program sampler
                  !              !ratio1=10.**(mh-logmbreak)
                  !              !ratio2=10.**(mh-10.)
                  !              !mhi=dlog10(A1*exp(-ratio1**alpha_hi)*ratio2**beta_hi+A2)+mh
-                 mhi=dlog10(A2)+mh  ! Baugh et al. hi-mass limit for all AGN
+                 mhi=dlog10(A2)+mh  ! Baugh et al. high-mass limit for all AGN
                  !himass(i)=mhi+random_normal()/5.   !Baugh 
                  !print*,himass(i),mhi
               endif
 
               draw=rand()
-              !if (draw >= 0.85) optclass(i)=2 !spiral
+
               if (draw >= 0.98) optclass(i)=2 !spiral  , Koziel-Wierzbowska et al. 2020
 
            enddo
@@ -1143,9 +1147,9 @@ program sampler
               sin_i=sin(angles(i))
               z_i=dble(z_gals(i))
               dim=sizes_3d(i)*sin_i/1000. ! size in Mpc corrected for view angle. 
-              sizes(i)=theta(dim,z_i)
-
-
+              sizes(i)=theta_p(dim,z_i)
+              !print*,'size check:'
+              !print*,angles(i),sizes_3d(i),dim
            enddo
 
            print*,'coordinates'
@@ -1609,7 +1613,7 @@ program sampler
            do i=1,Nsample
               z_i=dble(z_gals(i))
               dim=size_SF(Darkmass(i),z_i,ii)   ! physical size
-              sizes(i)=theta(dim,z_i)           ! apparent size
+              sizes(i)=theta_p(dim,z_i)           ! apparent size
               q=sqrt(squarealphas(ii)+(cos(inclinations(i)))**2.*(1.-squarealphas(ii))) ! axis ratio, linked to inclination and sub-population
               qrat(i)=q
               ellipticity1(i)=sqrt(sizes(i)**2./q) ! apparent bmaj

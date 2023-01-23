@@ -34,25 +34,24 @@ zmax=float(sys.argv[2])
 
 
 
-fov=4.    # Field of view of the crossmatched catalogue
+fov=5.    # Field of view of the crossmatched catalogue
 # this should be <= than the catalogue without clustering. If > than the DM catalogue, clustering os done only in the central part
 
 
 #info on the catalogue without clustering
-path='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_new/cross/'
-tag='HI_continuum'    # tag in the file name of the catalogues
+path='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/continuum/'
+tag='continuum'    # tag in the file name of the catalogues
 sim_side=5. #size of square simulation (degs)
-x_shift=0.1  #shifts from centre of simulation to centre of field 
-y_shift=0.1
+x_shift=0.  #shifts from centre of simulation to centre of field 
+y_shift=0.
 
 #info on the DM catalogues from the light cone
-path_dm='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/cones_fits/v2/' #path
+path_dm='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/Git/TRECS_Inputs/DMhalo_catalogues/' #path
 sim_side_dm=5. #size of square simulation (degs)
-x_shift_dm=0.05  #shifts from centre of simulation to centre of field 
-y_shift_dm=0.05
-
+x_shift_dm=0.0  #shifts from centre of simulation to centre of field 
+y_shift_dm=0.0
 ###path for output catalogue with clustering
-path_out='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_new/cross_clustered/'
+path_out='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/continuum_clustered/'
 
 ####end general settings
 
@@ -207,7 +206,8 @@ for i in range(len(redshift_names)):
         
             #environmental dependency for HI
             #check if HI is present in the column header
-            HI=0 
+            HI=0
+            rho_thr=50. #threshold on local density for HI galaxies
             for k in range(len(cols1)):
                 if (cols1[k] == 'MHI'): 
                     HI=1
@@ -215,7 +215,7 @@ for i in range(len(redshift_names)):
             if (HI == 1):
                 print('Catalogue contains HI field')
                 MHI = cat1['MHI']
-                rho_thr=50. #threshold on local density for HI galaxies
+                
 
 
             ###### ANALYSIS STARTS

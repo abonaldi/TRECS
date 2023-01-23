@@ -966,7 +966,8 @@ real(sp),parameter::mb0=11.5,mb1=-0.0,mb2=0.0,mb3=-0.0
 real(sp),parameter::theta=-1.
 
 !re-fitted parameters from Shen et al. late-type model 
-real(sp),parameter::alpha_1=0.115114,beta_1= 0.898240,gamma_1=0.198678,M0_1=3.01609e10 ! updated after calibrating from gauss fwhm to exp scale rad. 
+!real(sp),parameter::alpha_1=0.115114,beta_1= 0.898240,gamma_1=0.198678,M0_1=3.01609e10 ! updated after calibrating from gauss fwhm to exp scale rad.
+real(sp),parameter::alpha_1=0.115114,beta_1= 0.898240,gamma_1=0.1,M0_1=3.01609e10 ! updated after using physical size instead of comoving
 real(sp),parameter::sigma1=0.47,sigma2=0.34,M0_sigma=4.e10 ! shen et al. table 1 for scatter
 
 
@@ -1130,11 +1131,11 @@ contains
   !-----------------------------------------------------------------------
 
   function dA(z)
-    ! angular diameter distance in units of Mpc/h
+    ! angular diameter distance in units of Mpc
 
     real(dp), INTENT(IN) :: z
     real(dp) :: dA
-    dA = r(z)/(1._dp+z)/h
+    dA = r(z)/(1._dp+z)
     RETURN
   end function dA
   !-----------------------------------------------------------------------
@@ -1144,7 +1145,7 @@ contains
     real(dp), INTENT(IN) :: z
     real(dp) :: dVdzdO
 
-    dVdzdO = c/1.0d5*r(z)**2/Eh(z)!*h**(-3)
+    dVdzdO = c/1.0d5*r(z)**2/Eh(z)
   end function dVdzdO
 
   function lumr(z)
@@ -1159,24 +1160,44 @@ contains
 
   !-----------------------------------------------------------------------
 
-  function theta(size,z)
+  function theta_c(size,z)
     ! angular size of a source given comoving size and redshift
     ! size in Mpc (comoving)
     ! theta in arcsec
     real(sp),intent(in)::size
     real(dp),intent(in)::z
-    real(sp)::theta      
-    theta=size/r(z)*180./PI*60.*60. !arcsec
-  end function theta
+    real(sp)::theta_c      
+    theta_c=size/r(z)*180./PI*60.*60. !arcsec
+  end function theta_c
 
-  function size(fov,z)
-    ! comoving size of a source given angular and redshift
+  function theta_p(size,z)
+    ! angular size of a source given physical size and redshift
+    ! size in Mpc (comoving)
+    ! theta in arcsec
+    real(sp),intent(in)::size
+    real(dp),intent(in)::z
+    real(sp)::theta_p      
+    theta_p=size/da(z)*180./PI*60.*60. !arcsec
+  end function theta_p
+
+  
+  function size_c(fov,z)
+    ! comoving size of a source given angular size and redshift
     ! fov in degrees
     ! size in MPc (comoving)
     real(dp),intent(in)::fov,z
-    real(dp)::size
-    size=fov*PI/180.*r(z)
-  end function size
+    real(dp)::size_c
+    size_c=fov*PI/180.*r(z)
+  end function size_c
+  
+  function size_p(fov,z)
+    ! physical size of a source given angular and redshift
+    ! fov in degrees
+    ! size in MPc (physical)
+    real(dp),intent(in)::fov,z
+    real(dp)::size_p
+    size_p=fov*PI/180.*da(z)
+  end function size_p
 
 
 end module cosmology

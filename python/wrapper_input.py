@@ -50,41 +50,51 @@ def collate(folder1,folder2,lat_target,lon_target,sim_side,do_clustering,tag):
 
 
 
-folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/continuum/'
+folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/cross/'
 folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/'
 
-tag='continuum_15sep'
+tag='continuum_HI_21Oct22'
 
-folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/hi/'
-folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/'
+#folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/continuum_theta_p/'
+#folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/'
 
-tag='hi_15sep'
-
-folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/cross_test/'
-folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/'
-
-tag='cross_6dec'
-
-
-folder1='/home/a.bonaldi/data-cold-for-backup/SDC3/TRECS_cats/run1/'
-folder2='/home/a.bonaldi/data-cold-for-backup/SDC3/TRECS_cats/'
-
-tag='SDC3_v1'
-
-folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_magnetism/run1/'
-folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_magnetism/'
+#tag='continuum_thetap'
 
 
 
-tag='magnetism_v1'
+#folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/hi/'
+#folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/'
+
+#tag='hi_15sep'
+
+#folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/cross_test/'
+#folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/'
+
+#tag='cross_6dec'
 
 
-folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_lsync/test1/'
-folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_lsync/'
+#folder1='/home/a.bonaldi/data-cold-for-backup/SDC3/TRECS_cats/run3/8/'
+#folder2='/home/a.bonaldi/data-cold-for-backup/SDC3/TRECS_cats/'
 
-tag='test1'
+#tag='SDC3_v3_8'
+
+#folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_magnetism/run1/'
+#folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_magnetism/'
 
 
+
+#tag='magnetism_v1'
+
+
+#folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_lsync/test1/'
+#folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_lsync/'
+
+#tag='test1'
+
+
+tag='100nJy'
+folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_sensitivity_calculator/limit_100/'
+folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_sensitivity_calculator/'
 
 
 lat_target=-30.
