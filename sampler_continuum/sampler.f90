@@ -2,7 +2,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This program is part of the T-RECS code
 ! Author: A. Bonaldi
-! see Bonaldi et al. (2022) MNRAS for more details
+! see Bonaldi & Hartley (2023) MNRAS for more details
 ! generate samples of radio galaxies from models
 ! save outputs to files per redshift bin 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -56,13 +56,12 @@ program sampler
   CHARACTER(LEN=4) ::zstr
 
   !single precision variables
-  !real(sp)::center_lat,center_lon
   real(sp)::z_min,z_max,draw
   real(sp)::squarealphas(3)
   real(sp),allocatable::delta(:),work(:,:),diff(:)
   real(sp),allocatable::Radioflux(:,:),catout(:,:),catout_copy(:,:),samplex(:),lums(:),z_gals(:)
   real(sp),allocatable::Polaflux(:,:),inclinations(:),qrat(:),ellipticity1(:)
-  real(sp),allocatable::ellipticity2(:),polafracs(:),lums_save(:,:),thetas(:),freq_rest(:),lums_i(:)!,specind(:)
+  real(sp),allocatable::ellipticity2(:),polafracs(:),lums_save(:,:),thetas(:),freq_rest(:),lums_i(:)!
   real(sp)::sample100(100),rn,l_iii,nu_iii
   real(sp),allocatable::Radioflux_copy(:,:),samplex_copy(:),sizes(:),radioflux_slice(:,:),lums_slice(:),mstar_slice(:)
   real(sp),allocatable::angles(:),sizes_3d(:),lums_copy(:),spot_dist(:),himass(:),mstar_copy(:)
@@ -70,8 +69,8 @@ program sampler
   real(sp),allocatable::samplex_run(:),redshifts(:),L14(:),SFRtab(:),mstartab(:)
   real(sp),allocatable::masses_L14(:),redshifts_lum(:),samplex_slice(:)!,satellite_flag(:)
   real(sp),allocatable::masses_lerg(:),masses_herg(:),lerg_p(:),herg_p(:)
-  REAL(SP) :: clock_time,coo_max,coo_min,dlat,dlon,dz,delta_perp,delta_parall
-  REAL(SP) ::deltatheta,deltaz,mu,flux14,dmtol,mgal,ncone_binned,m_star
+  REAL(SP) :: clock_time,coo_max,coo_min,dlat,dlon,dz,delta_parall
+  REAL(SP) ::deltaz,mu,flux14,dmtol,mgal,ncone_binned,m_star
   real(sp)::dm_model,dm_model2,dm_best,lat,lon,maxflux(1),redshift,minmass,minmass_cone,q
   real(sp)::dim,lum_threshold,theta_high,theta_low,sin_i,cos_i,logs,alpha_low
   real(sp)::alpha_high,minfreq,norm_f,dlogl,col,b,a,arg1,arg2,th,freq_norm
@@ -223,10 +222,8 @@ program sampler
   ! end filenames
   !**********************************************************
 
-  !'Seeding random number generators'
-  !getting seed for random number generation from the clock
-
-
+  !Seeding random number generators
+  !Starts from a user-specified initial seed or from the execution clock
 
   if (seed_fix ==-1) then
      call system_clock(count=ic4, count_rate=crate4, count_max=cmax4)
@@ -289,8 +286,6 @@ program sampler
      alphascaling_48_20(i,4)=data(i,4)-data(i,5)           !alpha_steep
   enddo
 
-
-
   deallocate(data)
 
   !150MHz-1.4 GHz range
@@ -308,10 +303,6 @@ program sampler
   enddo
 
   deallocate(data)
-
-
-
-
 
 
   ! reading file with polarization fraction information
@@ -342,7 +333,7 @@ program sampler
   call read_columns(freq_filename,2,nfreq,Ncolumns,nskip,data)
   Nfreq_out=Nfreq
   ! add to the frequency vector the frequencies: 
-  !1400 and 4800 MHz and the frequency at which the flux cut is done, whether they are already 
+  ! 1400 and 4800 MHz and the frequency at which the flux cut is done, whether they are already 
   !included or not, because they are needed for the modelling. those added frequencies
   ! will not be included in the outputs, but just used internally by the code.
 
@@ -371,18 +362,21 @@ program sampler
 
 
   !structure of the catalogue
-  Ncat_common=(2+save_lums)*Nfreq_out+19 !number of catalogue columns: flux in total intensity and polarization, 
+  Ncat_common=(2+save_lums)*Nfreq_out+19 !number of catalogue columns
   !  commmon format for SFGs and AGNs
 
   !creating tag names for the catalogue
   allocate(tagnames(Ncat_common),tunit(Ncat_common),tform(Ncat_common))
   j=1
+  ! Luminosity at 1.4 GHz
   tagnames(j)='Lum1400'
   tunit(j)='log(erg/s/Hz)'
   j=2
+  ! SFR 
   tagnames(j)='logSFR'
   tunit(j)='log(Msun/yr)'
   j=3
+  ! total intensity flux density for all selected frequencies 
   do i=1,Nfreq_out
      write(output,"(i5)")int(frequencies(i+3))
      output=ADJUSTL(output)
@@ -393,7 +387,7 @@ program sampler
      j=j+1
   enddo
 
-  !polarised intensity
+  !polarised intensity for all selected frequencies
   do i=1,Nfreq_out
      write(output,"(i5)")int(frequencies(i+3))
      output=ADJUSTL(output)
@@ -404,61 +398,78 @@ program sampler
      j=j+1
   enddo
 
+  ! dark mass
   tagnames(j)='Mh'
   tunit(j)='log(Msun)'
   j=j+1
+  ! stellar mass
   tagnames(j)='Mstar'
   tunit(j)='log(Msun)'
   j=j+1
+  ! HI mass proxy
   tagnames(j)='MHI_pred'
   tunit(j)='log(Msun)'
   j=j+1
+  ! coordinate shift with respect to field center in the x direction
   tagnames(j)='x_coord'
   tunit(j)='degs'
   j=j+1
+    ! coordinate shift with respect to field center in the y direction
   tagnames(j)='y_coord'
   tunit(j)='degs'
   j=j+1
+  ! latitude
   tagnames(j)='latitude'
   tunit(j)='degs'
   j=j+1
+  !longitude
   tagnames(j)='longitude'
   tunit(j)='degs'
   j=j+1
+  !redshift
   tagnames(j)='redshift'
   tunit(j)='none'
   j=j+1
+  ! apparent size 
   tagnames(j)='size'
   tunit(j)='arcsec'
   j=j+1
+  ! inclination 
   tagnames(j)='inclination'
   tunit(j)='degs'
   j=j+1
+  ! axis ratio
   tagnames(j)='axis ratio'
   tunit(j)='none'
   j=j+1
+  ! major axis
   tagnames(j)='bmaj'
   tunit(j)='arcsec'
   j=j+1
+  ! monor axis
   tagnames(j)='bmin'
   tunit(j)='arcsec'
   j=j+1
+  ! position angle
   tagnames(j)='PA'
   tunit(j)='degs'
   j=j+1
+  ! Rs FRI/FRII classification parameter
   tagnames(j)='Rs'
   tunit(j)='none'
   j=j+1
+  ! radio classification
   tagnames(j)='RadioClass'
   tunit(j)='none'
   j=j+1
+  ! optical classification
   tagnames(j)='OptClass'
   tunit(j)='none'
   j=j+1
 
   if (save_lums ==1) then
      !optional tag names for the luminosities
-     !Luminosity
+     !Luminosity at all considered frequencies
      do i=1,Nfreq_out
         write(output,"(i5)")int(frequencies(i+3))
         output=ADJUSTL(output)
@@ -527,6 +538,7 @@ program sampler
 
   allocate(redshifts(nreds),redshift_names(nreds))
 
+  ! redshift slices 
   redshifts=(/0.01,0.02,0.05,0.10,0.15,0.20,0.25,0.30,0.35,0.40,0.45,0.50,0.55,&
        0.60,0.65,0.70,0.75,0.80,0.85,0.90,0.95,1.00,1.20,1.40,1.60,1.80,2.00,2.20,2.40,&
        2.60,2.80,3.00,3.20,3.40,3.60,3.80,4.00,4.20,4.40,4.60,4.80,5.00,5.20,5.40,5.60,5.80,&
@@ -565,8 +577,6 @@ program sampler
      if ((z_min <= z) .and. (z_max >= z)) then    ! redshift slice with center z is processed
 
         !getting the size of the redshift slice
-        delta_perp=1. 
-        !deltatheta=theta(delta_perp,z)
         select case (zi)
         case (1)
            zlow=0.
@@ -607,7 +617,7 @@ program sampler
         !reading done
 
         Nsample_old=0
-        do ii=1,3 !loop on AGN populations  FSRQ, BL-LAC, SS
+        do ii=1,3 !loop on AGN populations  FSRQ, BL-LAC, SteepS
            ! information for limiting ram usage
            ! processing long files in chuncks of lenght buffer_size
            buffer_size=1000
@@ -616,8 +626,6 @@ program sampler
 
            ! here allocate Radioflux to store total intensity results
            allocate(Radioflux(Nfreq,buffer_size),samplex(buffer_size))
-
-
 
            allocate(data(n_hist,ncolumns_lf),x(n_hist),px(n_hist),poisson_numbers(n_hist))  ! allocate arrays to read in luminosity files
 
@@ -629,7 +637,6 @@ program sampler
               theta_low=cos(90.*pi/180.)
               theta_high=cos(5.*pi/180.)
               
-
            case default
 
               theta_high=cos(0.)
@@ -860,15 +867,15 @@ program sampler
 
            !todo:change
            himass(:)=0.
-           optclass(:)=1 ! elliptical
-           !if (ii==2) optclass(:)=2 ! BL-LAc have a spiral host
+           optclass(:)=1 ! Starting point for AGN is to have elliptical optical class. This is refiled ;ater
+
            ! size and view angle from precomputed distributions
            spot_dist(:)=0. !Distance between two bright spots (FR classification) 
            !initialised to 0 because BLLAC and FSRQ will not have two lobes
 
            !AGN size model
-           !load file with intrinsic size distribution
-           !from DiPompeo et al. 2013 Table 2 
+           ! load file with intrinsic size distribution
+           ! from DiPompeo et al. 2013 Table 2 
            ! for flat-spectrum AGN Di Pompeo et al. 2013 Table 2 "narrow"
            ! for steep-spectrum AGN Di Pompeo et al. 2013 Table 2 "wide" 
            Ncolumns=4
@@ -1005,9 +1012,7 @@ program sampler
               !the +7 is to convert from W to erg/s
               Nsample_herg=0
 
-
-              !              print*,'Lum range',minval(samplex),maxval(samplex)
-
+             
               do i=1,Nsample
                  if (samplex(i) > lum_threshold) Nsample_herg=Nsample_herg+1
               enddo
@@ -1088,7 +1093,7 @@ program sampler
                  if (Darkmass(iii)==0.) then    
                     Darkmass(iii)=rand()*(xmax-xmin)+xmin
                     ! these sources are morphologically described as FRI
-                    ! gnenerate distance between the bright spots
+                    ! generate distance between the bright spots
                     spot_dist(iii)=random_normal()*0.11+0.17 !FRI
                  endif
 
@@ -1106,11 +1111,7 @@ program sampler
               longitudes(i)=(rand()-0.5)*sim_side
               z_gals(i)=rand()*(zhigh-zlow)+zlow
 
-
-
               mstar(i)=starmass(darkmass(i),z_gals(i)) !log10 stellar mass, Aversa et al. (2015)
-
-
 
               !himass with a stellar mass-hi mass relation 
               if (z_gals(i) <=0.525) then
@@ -1128,9 +1129,11 @@ program sampler
                  !              !ratio2=10.**(mh-10.)
                  !              !mhi=dlog10(A1*exp(-ratio1**alpha_hi)*ratio2**beta_hi+A2)+mh
                  mhi=dlog10(A2)+mh  ! Baugh et al. high-mass limit for all AGN
-                 !himass(i)=mhi+random_normal()/5.   !Baugh 
-                 !print*,himass(i),mhi
               endif
+
+
+              ! refine the optical class following Koziel-Wierzbowska et al. 2020
+              ! 98% of AGN are ellipticals, 2% are spiral
 
               draw=rand()
 
@@ -1148,15 +1151,14 @@ program sampler
               z_i=dble(z_gals(i))
               dim=sizes_3d(i)*sin_i/1000. ! size in Mpc corrected for view angle. 
               sizes(i)=theta_p(dim,z_i)
-              !print*,'size check:'
-              !print*,angles(i),sizes_3d(i),dim
+
            enddo
 
            print*,'coordinates'
            print*,minval(latitudes),maxval(latitudes)
            print*,minval(longitudes),maxval(longitudes)
 
-           !stop
+
            !preparing to output the data in catalogue format
            jstart=Nsample_old+1
 
@@ -1175,7 +1177,6 @@ program sampler
 
               allocate(catout_copy(Ncat_common,Nsample_old))
 
-              !              print*,size(catout),Nsample_old
               catout_copy=catout
               deallocate(catout)
               allocate(catout(Ncat_common,Nsample_old+Nsample))
@@ -1238,7 +1239,7 @@ program sampler
               enddo
 
               catout(2*nfreq_out+20:3*nfreq_out+19,jstart:jstart+Nsample-1)=lums_save(4:Nfreq,:)
-              !      catout(2*nfreq_out+18:3*nfreq_out+17,jstart:jstart+Nsample-1)=lums_save(4:Nfreq,:)
+
               deallocate(lums_save,lums_i,freq_rest)
 
            endif
@@ -1260,6 +1261,9 @@ program sampler
 
         deallocate(masses_lerg,masses_herg,lerg_p,herg_p)
 
+
+
+        ! SFGs modelling starts here
         print*,'************************'
         print*,'SFGs: Processing redshift',z,' Range',zlow,zhigh
         print*,'************************'
@@ -1275,8 +1279,6 @@ program sampler
         delta_parall=r(zhigh)-r(zlow)
 
         !z-angular distance conversion at this redshift
-        delta_perp=1. 
-        !deltatheta=theta(delta_perp,z)
 
         volumetot=4.*pi/3.*(r(zhigh)**3-r(zlow)**3)
         volume=volumetot*skyfrac  !volume corresponding to FoV
@@ -1430,10 +1432,6 @@ program sampler
                  sfr=10.**samplex_slice(j)
 
 
-                 !                 p=minloc(abs(samplex_slice(j)-SFRtab))
-                 !                 mstar_slice(j)=mstartab(p(1)) ! possible improvement: use interpolation
-
-
                  !associate stellar mass to SFR with the lookup table
                  !an intepolation is used between tabulated values and the galaxy's actual SFR
                  mstar_slice(j)=interpol(samplex_slice(j),SFRtab,mstartab,nrows_sfrtab)
@@ -1560,16 +1558,6 @@ program sampler
            call pola_SFGS(inclinations,frequencies,radioflux,polaflux)
 
 
-
-           !deallocate(radioflux,polaflux,samplex,darkmass,himass,latitudes,&
-           !              &longitudes,z_gals,sizes,sizes_3d,angles,spot_dist,optclass,stat=iostat)
-
-           !if (allocated(thetas)) print*,'ciao'
-           !if (allocated(satellite_flag)) print*,'ciao'
-           !if (allocated(optclass)) print*,'ciao'
-           !if (allocated(ellipticity2)) print*,'ciao'
-
-
            ! compute halo mass from sfr 
            allocate(Darkmass(Nsample),himass(Nsample)&
                 &,latitudes(Nsample),longitudes(Nsample),z_gals(Nsample),&
@@ -1599,13 +1587,6 @@ program sampler
               if (z_gals(i) <=0.525) himass(i)=(0.9-z_gals(i)*0.4)*samplex(i)+9.15+0.075*z_gals(i)+random_normal()*0.3 !derived by comparing mass distribution of hi and continuum.
               !TODO: add C-EVOL dependence to normalization
 
-              !if (z_gals(i) <=1.5) himass(i)=(0.9-z_gals(i)*0.6)*samplex(i)+9.5+random_normal()*0.3 !derived by comparing mass distribution of hi and continuum.
-              !modelling not done for z>1.5 TEST WITH NO SCATTER TO GET BETTER 
-
-
-              !ORIG himass(i)=0.5*samplex(i)+9.83+random_normal()*0.335 ! alphalpha correlation fit, z=0
-              !ORIG if (ii ==1) himass(i)=0.75*samplex(i)+9.25+random_normal()*0.23 ! alphalpha correlation fit, z=0 !optclass(:)=2 !spheroids -> elliptical, late-type -> spiral
-              !ORIG himass(i)=himass(i)-0.4*z_gals(i) ! correction based on matching abundances
            enddo
 
 
@@ -1740,7 +1721,6 @@ program sampler
 
   ! free memory
   deallocate(poladistr,x3,px3,alphascaling_48_20,alphascaling_14_48,alphascaling_015_14)
-  !deallocate(alphascaling_48_20_pola,alphascaling_14_48_pola)
   deallocate(redshifts,redshift_names)
   deallocate(dustsed,dif)
   deallocate(Lsyn,Lfree,Ld)
