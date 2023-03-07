@@ -1,7 +1,0 @@
-sim_side=5.
-fluxlim=10.e-9
-fluxlim_freq=1400.
-do_clustering=0
-freqs_file=./frequency_list_paper.dat
-outdir=/home/a.bonaldi/local2/scratch/Bonaldi/Radio_srccnt/runs_referee/medium/
-no_SFG=1

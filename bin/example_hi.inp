@@ -1,0 +1,3 @@
+sim_side=1.
+fluxlim=1.
+outdir=./

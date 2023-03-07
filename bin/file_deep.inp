@@ -1,6 +1,0 @@
-sim_side=1.
-fluxlim=1.e-9
-fluxlim_freq=1400.
-do_clustering=1
-freqs_file=/home/a.bonaldi/local2/scratch/Bonaldi/Radio_srccnt/runs_delivery/May2018/frequency_list.dat
-outdir=/home/a.bonaldi/local2/scratch/Bonaldi/Radio_srccnt/runs_delivery/May2018/deep/
