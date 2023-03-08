@@ -567,7 +567,7 @@ program sampler
            bmin(i)=q*bmaj(i)     ! apparent bmin
            pa(i)=rand()*360. !random PA in degs
 
-           log_vflat=1./A*(darkmass(i)-B)+random_normal()*sigma_ab
+           log_vflat=1./A*(darkmass(i)-B)+random_normal()*sigma_logv
            vmax(i)=10.**log_vflat
            w50(i)=vmax(i)*2.*sin(inclinations(i)*pi/180.)
            
