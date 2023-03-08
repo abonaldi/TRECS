@@ -24,9 +24,9 @@ TRECS  TRECS_Inputs
 
 2) check that you have a fortran compiler and these libraries are installed: GSL, Lapack, Healpix, cfitsio
 
-3) edit  The Makefile for sampler_continuum, sampler_hi and  wrapper with your paths and compiler options
+3) edit  The input makefile `make.inc` with your paths and compiler options
 
-4) run "make" in the sampler_continuum, sampler_hi and wrapper folders. The executables are saved in the bin folder. 
+4) run `make`. The executables are saved in the bin folder at the PREFIX provided in `make.inc` 
 
 
 the python scripts require astropy and astropy.io to run.
