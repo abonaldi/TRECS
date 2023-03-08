@@ -1,20 +1,21 @@
-
-
+CC = gcc
 F90 = gfortran
-CC = cc
-F90FLAGS = -O3 -openmp
-I_CFITSIO =  -I/home/a.bonaldi/data-cold-for-backup/software/cfitsio/include/
-L_CFITSIO =  -L/home/a.bonaldi/data-cold-for-backup/software/cfitsio/lib -lcfitsio
-I_HEALPIX = -I/home/a.bonaldi/data-cold-for-backup/software/Healpix_3.31/include
-L_HEALPIX =  -L/home/a.bonaldi/data-cold-for-backup/software/Healpix_3.31/lib -lhealpix -lgif
-L_GSL= -L//home/a.bonaldi/data-cold-for-backup/software/libtyler/ -lgsl -lgslcblas
-L_LAPACK=-L/home/bonaldi/libraries/ -llapack 
-LDFLAGS = 
+F90FLAGS = -O3 -fopenmp -std=gnu
+CFITSIO_DIR = /opt/cfitsio/4.2.0
+HEALPIX_DIR = /opt/healpix/3.82
+LAPACK_DIR = /opt/lapack/3.11.0
+I_CFITSIO =  -I$(CFITSIO_DIR)/include/
+L_CFITSIO =  -L$(CFITSIO_DIR)/lib -lcfitsio
+I_HEALPIX = -I$(HEALPIX_DIR)/include
+L_HEALPIX =  -L$(HEALPIX_DIR)/lib -lhealpix -lgif
+L_GSL = -L$(GSL_LIB) -lgsl -lgslcblas
+L_LAPACK = -L$(LAPACK_DIR) -llapack
+LDFLAGS = -lgcc
 
 INCLUDE := $(I_CFITSIO) $(I_HEALPIX) 
-LINK := $(LINK) $(L_HEALPIX) $(L_CFITSIO)  $(LDFLAGS) 
+LINK := $(LINK) $(L_HEALPIX) $(L_CFITSIO) $(L_LAPACK) $(LDFLAGS) 
 
-OBJ := ../modules/random_modules.o ../modules/sampler_io.o  ../modules/sampler_modules.o sampler.o ../../liblapack.so
+OBJ := ../modules/random_modules.o ../modules/sampler_io.o  ../modules/sampler_modules.o sampler.o
 
 default: all
 all : $(OBJ)
@@ -24,4 +25,4 @@ all : $(OBJ)
 	$(F90) $(F90FLAGS) $(INCLUDE) -o $@ -c $<
 
 clean: 
-	rm *.o ../modules/*.o *.mod
+	rm -f *.o *.mod $(OBJ) ../modules/*.mod ../bin/sampler_hi
