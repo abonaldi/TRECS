@@ -29,4 +29,4 @@ TRECS  TRECS_Inputs
 4) run "make" in the sampler_continuum, sampler_hi and wrapper folders. The executables are saved in the bin folder. 
 
 
-the python scripts require astropy and astropy.io to run. 
+the python scripts require astropy and astropy.io to run.
