@@ -49,16 +49,16 @@ mkdirs:
 modules: $(OBJ_MOD)
 
 continuum: $(OBJ_MOD) $(OBJ_CON)
-	$(F90) $(F90FLAGS) -o $(PREFIX)/bin/sampler_continuum $(OBJ_CON) $(OBJ_MOD) $(LINK)
+	$(F90) $(F90FLAGS) -o $(PREFIX)/bin/sampler_continuum $(OBJ_MOD) $(OBJ_CON) $(LINK)
 
-hi: $(OBJ_MOD) $(OBJ_CON)
-	$(F90) $(F90FLAGS) -o $(PREFIX)/bin/sampler_hi $(OBJ_CON) $(OBJ_MOD) $(LINK)
+hi: $(OBJ_MOD) $(OBJ_HyI)
+	$(F90) $(F90FLAGS) -o $(PREFIX)/bin/sampler_hi $(OBJ_MOD) $(OBJ_HyI) $(LINK)
 
-xmatch: $(OBJ_MOD) $(OBJ_CON)
-	$(F90) $(F90FLAGS) -o $(PREFIX)/bin/sampler_xmatch $(OBJ_CON) $(OBJ_MOD) $(LINK)
+xmatch: $(OBJ_MOD) $(OBJ_XMC)
+	$(F90) $(F90FLAGS) -o $(PREFIX)/bin/xmatch $(OBJ_MOD) $(OBJ_XMC) $(LINK)
 
-wrapper: $(OBJ_MOD) $(OBJ_CON)
-	$(F90) $(F90FLAGS) -o $(PREFIX)/bin/sampler_wrapper $(OBJ_CON) $(OBJ_MOD) $(LINK)
+wrapper: $(OBJ_MOD) $(OBJ_WRP)
+	$(F90) $(F90FLAGS) -o $(PREFIX)/bin/wrapper $(OBJ_MOD) $(OBJ_WRP) $(LINK)
 
 ######################################################
 # Generic rules
