@@ -21,7 +21,15 @@ CFLAGS = -O3 -std=C99
 # and desired compiler options for your machine.
 #
 F90 = gfortran
-F90FLAGS = -O3 -J $(PREFIX)/mod
+F90FLAGS = -O3
+
+# Provide the flag in your compiler used to redirect
+# .mod builds in directory different than current
+# (e.g. gfortran -> '-J', ifort -> '-module')
+# If commented or left empty modules will be compiled
+# in the current directory
+#
+F90RMOD = -J
 
 # OpenMP flag for your system
 #
@@ -31,7 +39,7 @@ OMPFLAG = -fopenmp
 #
 LDFLAGS = -lgcc
 
-####################################################
+###############################################################################################
 # Dependencies
 
 # GSL library
@@ -57,10 +65,10 @@ HEALPIX_LIB = $(HEALPIX_DIR)/lib
 LAPACK_DIR = /opt/lapack/3.11.0
 LAPACK_LIB = $(LAPACK_DIR)
 
-####################################################
+###############################################################################################
 
 BUILDDIR = /tmp/TRECS_build
 
-####################################################
+###############################################################################################
 
 

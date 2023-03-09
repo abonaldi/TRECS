@@ -21,14 +21,17 @@ L_LAPACK  = -L$(LAPACK_DIR) -llapack
 INCLUDE := $(I_CFITSIO) $(I_HEALPIX) 
 LINK := $(LINK) $(L_HEALPIX) $(L_CFITSIO) $(L_LAPACK) $(LDFLAGS) 
 
-######################################################
+###############################################################################################
 # Paths within the top directory
 
 SRCDIR = $(TOPSRCDIR)/src
 MODDIR = $(PREFIX)/mod
+ifdef F90RMOD
+F90FLAGS += $(F90RMOD) $(MODDIR)
+endif
 
-######################################################
-#
+###############################################################################################
+# Define objects
 
 OBJ_MOD = $(BUILDDIR)/random_modules.o $(BUILDDIR)/sampler_io.o $(BUILDDIR)/sampler_modules.o
 OBJ_CON = $(BUILDDIR)/sampler_continuum.o
@@ -36,7 +39,7 @@ OBJ_HyI = $(BUILDDIR)/sampler_hi.o
 OBJ_WRP = $(BUILDDIR)/wrapper.o
 OBJ_XMC = $(BUILDDIR)/xmatch.o
 
-######################################################
+###############################################################################################
 # Rules to build library
 
 default: all
@@ -49,27 +52,27 @@ mkdirs:
 modules: $(OBJ_MOD)
 
 continuum: $(OBJ_MOD) $(OBJ_CON)
-	$(F90) $(F90FLAGS) -o $(PREFIX)/bin/sampler_continuum $(OBJ_MOD) $(OBJ_CON) $(LINK)
+	$(F90) $(F90FLAGS) -o $(PREFIX)/bin/trecs_sampler_continuum $(OBJ_MOD) $(OBJ_CON) $(LINK)
 
 hi: $(OBJ_MOD) $(OBJ_HyI)
-	$(F90) $(F90FLAGS) -o $(PREFIX)/bin/sampler_hi $(OBJ_MOD) $(OBJ_HyI) $(LINK)
+	$(F90) $(F90FLAGS) -o $(PREFIX)/bin/trecs_sampler_hi $(OBJ_MOD) $(OBJ_HyI) $(LINK)
 
 xmatch: $(OBJ_MOD) $(OBJ_XMC)
-	$(F90) $(F90FLAGS) -o $(PREFIX)/bin/xmatch $(OBJ_MOD) $(OBJ_XMC) $(LINK)
+	$(F90) $(F90FLAGS) -o $(PREFIX)/bin/trecs_xmatch $(OBJ_MOD) $(OBJ_XMC) $(LINK)
 
 wrapper: $(OBJ_MOD) $(OBJ_WRP)
-	$(F90) $(F90FLAGS) -o $(PREFIX)/bin/wrapper $(OBJ_MOD) $(OBJ_WRP) $(LINK)
+	$(F90) $(F90FLAGS) -o $(PREFIX)/bin/trecs_wrapper $(OBJ_MOD) $(OBJ_WRP) $(LINK)
 
-######################################################
+###############################################################################################
 # Generic rules
 
 $(BUILDDIR)/%.o : $(SRCDIR)/%.f90
 	$(F90) $(F90FLAGS) $(INCLUDE) -o $@ -c $<
 
-######################################################
+###############################################################################################
 # Phony rules
 
-.PHONY: clean purge ending
+.PHONY: clean ending
 
 ending:
 	$(info )
@@ -80,12 +83,8 @@ ending:
 	$(info now removing build directory)
 	rm -rf $(BUILDDIR)
 
-purge:
-	$(info purging)
-	rm -rf $(BUILDDIR) $(PREFIX)
-
 clean:
 	$(info cleaning up)
-	rm -f $(BUILDDIR)/*.o $(MODDIR)/*.mod *~ *# $(PREFIX)/bin/*
+	rm -f $(BUILDDIR)/*.o $(MODDIR)/*.mod *~ *# $(PREFIX)/bin/trecs_*
 
-######################################################
+###############################################################################################
