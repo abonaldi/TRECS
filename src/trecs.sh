@@ -6,6 +6,7 @@
 docontinuum=false
 dohi=false
 doxmatch=false
+params=
 while [ $# -gt 0 ]
 do
     case $1 in
@@ -76,30 +77,39 @@ EOF
     shift
 done
 
+if [ ! -f "$params" ] ; then
+    echo "Error: parameter file not provided! See usage by running"
+    echo "$ $0 --help"
+    exit 555
+fi
+
 #############################################################################################
 # Continuum on-demand
 
 if [ docontinuum = true ]; then
-
+    # trecs_sampler_continuum $params
+    echo
 fi
 
 #############################################################################################
 # HI on-demand
 
 if [ dohi = true ]; then
-
+    # trecs_sampler_hi $params
+    echo
 fi
 
 #############################################################################################
 # Cross-match on-demand
 
 if [ doxmatch = true ]; then
-
+    # trecs_sampler_xmatch $params
+    echo
 fi
 
 #############################################################################################
 # here do wrapping
 
-
+# trecs_wrapper
 
 #############################################################################################
