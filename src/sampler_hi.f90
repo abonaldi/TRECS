@@ -114,7 +114,7 @@ program sampler
 
   description = concatnl( &
        & " Enter the flux limit [Jy Hz]: ")
-  fluxlim = parse_double(handle, 'fluxlim', default=1.d0, descr=description)
+  fluxlim = parse_double(handle, 'fluxlim_hi', default=1.d0, descr=description)
 
   description = concatnl( &
        & " Enter the C_evol parameter: ")
@@ -138,16 +138,20 @@ program sampler
   seed_fix = parse_int(handle, 'seed', default=-1, descr=description)
   ! end reading input parameters
 
+  ! setting the maximum redshift to at most z=0.5
+  z_max = minval( (/z_max, 0.5/) )
+
 
   !'Seeding random number generators'
   !getting seed for random number generation from the clock
-
+  
   if (seed_fix ==-1) then
      call system_clock(count=ic4, count_rate=crate4, count_max=cmax4)
      do i=1,34
         seed(i)=ic4*i/12.+iseed  ! combining two clock readings to fill 12 seeds
      enddo
   else
+     seed_fix = 666 * seed_fix
      do i=1,34
         seed(i)=1284350*i+seed_fix  ! combining two clock readings to fill 12 seeds
      enddo
