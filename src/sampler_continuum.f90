@@ -36,7 +36,7 @@ program sampler
   real(sp),parameter::flagvalue=-100.
 
   !character variables
-  character(LEN=filenamelen)::paramfile,description,dummy,outdir
+  character(LEN=filenamelen)::paramfile,description,dummy,outdir,indir
   real(dp),allocatable::frequencies(:),frequencies_rest(:),Lsyn(:),Lfree(:),Ld(:)
   real(sp),allocatable::spec(:)
   real(dp)::nu,deltanu,sfr,mn,mx,volume,integ,volumetot,fom,fom_old
@@ -93,7 +93,7 @@ program sampler
   integer::no_AGN,no_SFG,save_lums,Nsample_binned,istart(1),iend(1),istart_i,iend_i,iii,jstart
   integer*8::Nsample,Nsample_lerg,Nsample_herg,join,k,n_hist,nside,ntiles,t,Nsample100
   integer::iseed,Nfreq,Nfreq_out,i,ii,nrows,nrows_sfrtab,Ncolumns,Ncolumns_lf,nskip,Ngen,Ngen2,jj,kk,nrows_sf,seed_fix
-  integer::buffer_size,buffer_free,jbuf,buffer_free_old,buffer_size_old,l_outdir
+  integer::buffer_size,buffer_free,jbuf,buffer_free_old,buffer_size_old,l_outdir,l_indir
   integer::count,Ncat_common,nrows_lerg,nrows_herg,seed(34),nrows_old,nrows_lf
   integer::Nsample_old,Nfunction,Nsample_surv,Nhaloes,Nsample_mass,nreds_out
   integer::l,j,nreds,nreds2,nreds_cone,zi,nloop,ist,iostat,nreds_lum,islice
@@ -134,14 +134,14 @@ program sampler
   endif
 
 
-  ! --- declaration of intent                                                                                       
+  ! --- declaration of intent
   PRINT*," "
   PRINT*,"               "//code
   PRINT*," "
 
-  !*************************************                                                                                       
-  !read input parameters from file or interactively                                                                                        
-  !************************************                                                                                        
+  !*************************************
+  !read input parameters from file or interactively
+  !*************************************
 
   handle = parse_init(paramfile)
 
@@ -163,11 +163,11 @@ program sampler
 
   description = concatnl( &
        & " Enter the flux limit [Jy]: ")
-  fluxlim = parse_double(handle, 'fluxlim', default=10.d-9, descr=description)
+  fluxlim = parse_double(handle, 'fluxlim_cont', default=10.d-9, descr=description)
 
   description = concatnl( &
        & " Enter the frequency at which the fluxlimit is imposed [MHz]: ")
-  fluxlim_freq = parse_double(handle, 'fluxlim_freq', default=1400.d0, descr=description)
+  fluxlim_freq = parse_double(handle, 'fluxlim_cont_freq', default=1400.d0, descr=description)
 
   description = concatnl( &
        & " Do you want to output the luminosities (0=no, 1=yes)? ")
@@ -185,6 +185,10 @@ program sampler
        & " Enter the name of the the output file directory:")
   outdir=  parse_string(handle, 'outdir', default='.', descr=description)
 
+  description = concatnl( &
+       & " Enter the name of the the input files directory:")
+  indir=  parse_string(handle, 'TRECSinputs', default='.', descr=description)
+
 
   description = concatnl( &
        & " Do you want to skip the AGN simulation (0=no, 1=yes)")
@@ -192,6 +196,9 @@ program sampler
 
   ! end reading input parameters
 
+  !string formatting: eliminate spaces between path and file name
+  indir=ADJUSTL(indir)
+  l_indir=LEN_TRIM(indir)  
 
   !***************************************************
   !Global filenames for the input data to be read:
@@ -199,38 +206,39 @@ program sampler
   !    AGNs
   !
   !effective spectral indices for AGNs
-  filename1='../../TRECS_Inputs/alphaeff/alphascaling_1.4_4.8.txt'
-  filename2='../../TRECS_Inputs/alphaeff/alphascaling_4.8_20.txt'
-  filename3='../../TRECS_Inputs/alphaeff/alphascaling_1.4_0.150.txt'
+  filename1=indir(1:l_indir)//'/TRECS_Inputs/alphaeff/alphascaling_1.4_4.8.txt'
+  filename2=indir(1:l_indir)//'/TRECS_Inputs/alphaeff/alphascaling_4.8_20.txt'
+  filename3=indir(1:l_indir)//'/TRECS_Inputs/alphaeff/alphascaling_1.4_0.150.txt'
 
 
 
   !polarization fractions, Galluzzi et l. and Hales et al. 
-  filename7='../../TRECS_Inputs/AGN_polafraction/Polfrac_AGNs_1e4_hales.dat' 
+  filename7=indir(1:l_indir)//'/TRECS_Inputs/AGN_polafraction/Polfrac_AGNs_1e4_hales.dat' 
 
   !characteristic luminosity: redshift bins
-  filename8='../../TRECS_Inputs/LF/CharLum/Characteristic_Luminosity/z_bins.dat'
+  filename8=indir(1:l_indir)//'/TRECS_Inputs/LF/CharLum/Characteristic_Luminosity/z_bins.dat'
 
   !Intrinsic AGN size distribution from DiPompeo et al.
-  filename9='../../TRECS_Inputs/LF/AGN_sizes_new.dat'  
+  filename9=indir(1:l_indir)//'/TRECS_Inputs/LF/AGN_sizes_new.dat'  
 
   !   SFGs
   !
   !dust SED
-  filename10='../../TRECS_Inputs/LF/SEDdust.dat'!nu, UVgal, spheroids, lens_spheroids
+  filename10=indir(1:l_indir)//'/TRECS_Inputs/LF/SEDdust.dat'!nu, UVgal, spheroids, lens_spheroids
 
   ! end filenames
   !**********************************************************
 
   !Seeding random number generators
   !Starts from a user-specified initial seed or from the execution clock
-
+  
   if (seed_fix ==-1) then
      call system_clock(count=ic4, count_rate=crate4, count_max=cmax4)
      do i=1,34
         seed(i)=ic4*i/12.+iseed  ! combining two clock readings to fill 12 seeds
      enddo
   else
+     seed_fix = 555 * seed_fix
      do i=1,34
         seed(i)=1284350*i+seed_fix  ! combining two clock readings to fill 12 seeds
      enddo
@@ -512,7 +520,7 @@ program sampler
   close(iunit)
 
   !reading the first characteristic luminosity file to get dimension of files for later
-  AGN_filename='../../TRECS_Inputs/LF/CharLum/Characteristic_Luminosity/luminosity_0.01000.dat' 
+  AGN_filename=indir(1:l_indir)//'/TRECS_Inputs/LF/CharLum/Characteristic_Luminosity/luminosity_0.01000.dat' 
   Ncolumns=6
   Ncolumns_lf=Ncolumns
   nrows=rows_number(AGN_filename,1,nskip)
@@ -593,8 +601,8 @@ program sampler
         zstr=redshift_names(zi) ! redshift tag for files
 
         !files for AGN mass modelling
-        LERG_filename='../../TRECS_Inputs/AbundanceMatch/results_AGNs/AGNprob_LERG_z'//zstr//'.txt' 
-        HERG_filename='../../TRECS_Inputs/AbundanceMatch/results_AGNs/AGNprob_HERG_z'//zstr//'.txt' 
+        LERG_filename=indir(1:l_indir)//'/TRECS_Inputs/AbundanceMatch/results_AGNs/AGNprob_LERG_z'//zstr//'.txt' 
+        HERG_filename=indir(1:l_indir)//'/TRECS_Inputs/AbundanceMatch/results_AGNs/AGNprob_HERG_z'//zstr//'.txt' 
 
         !reading files for AGN mass modelling 
         Ncolumns=2
@@ -666,7 +674,7 @@ program sampler
                  frequencies_rest=frequencies*(1.+zlum) !freq in the rest frame (for K correction)
 
                  !read luminosities 
-                 AGN_filename='../../TRECS_Inputs/LF/CharLum/Characteristic_Luminosity/luminosity_'//zstr_long//'.dat'  
+                 AGN_filename=indir(1:l_indir)//'/TRECS_Inputs/LF/CharLum/Characteristic_Luminosity/luminosity_'//zstr_long//'.dat'  
                  call read_columns(AGN_filename,2,nrows_lf,Ncolumns_lf,nskip,data)
 
                  x=data(:,2) ! log of characteristic luminosity
@@ -1286,7 +1294,7 @@ program sampler
 
         !relation between L14 and mass of dark halo, from abundance matching
         ! reading from a file
-        SFR2Mh_filename='../../TRECS_Inputs/AbundanceMatch/results_LSFR/L2mh_z'//zstr//'.txt' 
+        SFR2Mh_filename=indir(1:l_indir)//'/TRECS_Inputs/AbundanceMatch/results_LSFR/L2mh_z'//zstr//'.txt' 
         Ncolumns=2
         nrows=rows_number(SFR2Mh_filename,1,nskip)
         Nfunction=nrows
@@ -1304,7 +1312,7 @@ program sampler
 
         !relation between SFR and stellar mass, from Aversa et al. 2015
         ! reading from a file
-        SFR2Mstar_filename='../../TRECS_Inputs/results_SFR_Mstar/SFR2mstar_z'//zstr//'.txt' 
+        SFR2Mstar_filename=indir(1:l_indir)//'/TRECS_Inputs/results_SFR_Mstar/SFR2mstar_z'//zstr//'.txt' 
         Ncolumns=2
         nrows=rows_number(SFR2Mstar_filename,1,nskip)
 
@@ -1325,7 +1333,7 @@ program sampler
 
 
         !Reading SFR rate functins, from Mancuso et al. 
-        SFR_filename='../../TRECS_Inputs/SFRF/SFRF_z'//zstr//'.dat'  
+        SFR_filename=indir(1:l_indir)//'/TRECS_Inputs/SFRF/SFRF_z'//zstr//'.dat'  
 
         Ncolumns=5
         nrows=rows_number(SFR_filename,1,nskip)
