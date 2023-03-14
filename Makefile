@@ -75,6 +75,7 @@ $(BUILDDIR)/%.o : $(SRCDIR)/%.f90
 .PHONY: clean ending
 
 ending:
+	cp $(SRCDIR)/trecs.sh $(PREFIX)/bin/trecs && chmod u+x $(PREFIX)/bin/trecs
 	$(info )
 	$(info Success!!)
 	$(info )
@@ -85,6 +86,6 @@ ending:
 
 clean:
 	$(info cleaning up)
-	rm -f $(BUILDDIR)/*.o $(MODDIR)/*.mod *~ *# $(PREFIX)/bin/trecs_*
+	rm -f $(BUILDDIR)/*.o $(MODDIR)/*.mod *~ *# $(PREFIX)/bin/trecs*
 
 ###############################################################################################

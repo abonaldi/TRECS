@@ -12,15 +12,12 @@ do
     case $1 in
 	-c|--continuum)
 	    docontinuum=true
-	    shift
 	    ;;
 	-i|--HI)
 	    dohi=true
-	    shift
 	    ;;
 	-x|--xmatch)
 	    doxmatch=true
-	    shift
 	    ;;
 	-p|--params)
 	    params=$2
@@ -83,26 +80,26 @@ if [ ! -f "$params" ] ; then
     exit 555
 fi
 
+echo $docontinuum $dohi $doxmatch
+
 #############################################################################################
 # Continuum on-demand
 
-if [ docontinuum = true ]; then
-    # trecs_sampler_continuum $params
-    echo
+if [ $docontinuum = true ]; then
+    trecs_sampler_continuum $params
 fi
 
 #############################################################################################
 # HI on-demand
 
-if [ dohi = true ]; then
-    # trecs_sampler_hi $params
-    echo
+if [ $dohi = true ]; then
+    trecs_sampler_hi $params
 fi
 
 #############################################################################################
 # Cross-match on-demand
 
-if [ doxmatch = true ]; then
+if [ $doxmatch = true ]; then
     # trecs_sampler_xmatch $params
     echo
 fi
