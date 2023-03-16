@@ -23,7 +23,7 @@ do
 	    params=$2
 	    if [ ! -f "$params" ] ; then
 		echo "Error: provided parameter file does not exist or is not a file"
-		exit 666
+		exit 1
 	    fi
 	    shift
 	    ;;
@@ -77,10 +77,27 @@ done
 if [ ! -f "$params" ] ; then
     echo "Error: parameter file not provided! See usage by running"
     echo "$ $0 --help"
-    exit 555
+    exit 1
 fi
 
-echo $docontinuum $dohi $doxmatch
+#############################################################################################
+# Checking python dependencies before running
+
+python -c 'import numpy' 2>/dev/null
+if [ $? != 0 ]; then
+    echo "Error: TRECS needs NumPy package of python to run" 1>&2
+    exit 1
+fi
+python -c 'import astropy' 2>/dev/null
+if [ $? != 0 ]; then
+    echo "Error: TRECS needs AstroPy package of python to run" 1>&2
+    exit 1
+fi
+python -c 'import sklearn' 2>/dev/null
+if [ $? != 0 ]; then
+    echo "Error: TRECS needs SKLearn package of python to run" 1>&2
+    exit 1
+fi
 
 #############################################################################################
 # Continuum on-demand
