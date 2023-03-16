@@ -35,7 +35,8 @@ zmax=float(sys.argv[2])
 
 
 fov=5.    # Field of view of the crossmatched catalogue
-# this should be <= than the catalogue without clustering. If > than the DM catalogue, clustering os done only in the central part
+# this should be <= than the catalogue without clustering.
+# If > than the DM catalogue, clustering is done only in the central part
 
 
 #info on the catalogue without clustering
