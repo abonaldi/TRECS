@@ -6,6 +6,7 @@
 docontinuum=false
 dohi=false
 doxmatch=false
+wrap=false
 params=
 while [ $# -gt 0 ]
 do
@@ -18,6 +19,9 @@ do
 	    ;;
 	-x|--xmatch)
 	    doxmatch=true
+	    ;;
+	-w|--wrap)
+	    dowrap=true
 	    ;;
 	-p|--params)
 	    params=$2
@@ -60,6 +64,10 @@ Optional arguments:
         HI properties in case both have been generated 
         (default=false)
 
+    -w, --wrap
+    	whether to wrap all the resulting catalogues into one
+	(NOTE: the un-wrapped catalogues will be removed)
+
     -h, --help
         display this help message and exit
 
@@ -83,20 +91,35 @@ fi
 #############################################################################################
 # Checking python dependencies before running
 
-python -c 'import numpy' 2>/dev/null
-if [ $? != 0 ]; then
-    echo "Error: TRECS needs NumPy package of python to run" 1>&2
-    exit 1
+# necessary for both Wrapper and X-matcher:
+if [ $dowrap = true || $doxmatch = true ]; then
+
+   # AstroPy
+   python -c 'import astropy' 2>/dev/null
+   if [ $? != 0 ]; then
+       echo "Error: TRECS needs the AstroPy package of python to run" 1>&2
+       exit 1
+   fi
+   
 fi
-python -c 'import astropy' 2>/dev/null
-if [ $? != 0 ]; then
-    echo "Error: TRECS needs AstroPy package of python to run" 1>&2
-    exit 1
-fi
-python -c 'import sklearn' 2>/dev/null
-if [ $? != 0 ]; then
-    echo "Error: TRECS needs SKLearn package of python to run" 1>&2
-    exit 1
+
+# necessary only for the X-matcher:
+if [ $doxmatch = true ]; then
+
+    # SKLearn
+    python -c 'import sklearn' 2>/dev/null
+    if [ $? != 0 ]; then
+	echo "Error: TRECS needs the SKLearn package of python to run" 1>&2
+	exit 1
+    fi
+
+    # NumPy
+    python -c 'import numpy' 2>/dev/null
+    if [ $? != 0 ]; then
+	echo "Error: TRECS needs the NumPy package of python to run" 1>&2
+	exit 1
+    fi
+
 fi
 
 #############################################################################################
@@ -124,6 +147,9 @@ fi
 #############################################################################################
 # here do wrapping
 
-# trecs_wrapper
+if [ $dowrap = true ]; then
+    # trecs_wrapper
+    echo
+fi
 
 #############################################################################################
