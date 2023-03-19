@@ -198,7 +198,7 @@ program sampler
 
   !string formatting: eliminate spaces between path and file name
   indir=ADJUSTL(indir)
-  l_indir=LEN_TRIM(indir)  
+  l_indir=LEN_TRIM(indir)
 
   !***************************************************
   !Global filenames for the input data to be read:
