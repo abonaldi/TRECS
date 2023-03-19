@@ -8,18 +8,18 @@ import glob
 import astropy
 
 
-def collate(folder1,folder2,lat_target,lon_target,sim_side,do_clustering,tag):
+def collate(indir,outdir,lat_target,lon_target,sim_side,do_clustering,tag):
     
 
     from astropy.io import fits
-    file=folder2+'/catalogue_complete_'+tag+'.fits'
+    file=outdir+'/catalogue_complete_'+tag+'.fits'
 
     try:
         os.system('rm '+file)
     except OSError:
         pass
 
-    results0=glob.glob(folder1+'/*.fits')
+    results0=glob.glob(indir+'/*.fits')
 
     results=results0
     
@@ -48,8 +48,8 @@ def collate(folder1,folder2,lat_target,lon_target,sim_side,do_clustering,tag):
     return
 
 tag='100nJy'
-folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_sensitivity_calculator/limit_100/'
-folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_sensitivity_calculator/'
+indir='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_sensitivity_calculator/limit_100/'
+outdir='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_sensitivity_calculator/'
 
 
 lat_target=-30.
@@ -61,11 +61,11 @@ sim_side=5
 
 
 try:
-    os.mkdir(folder2)
+    os.mkdir(outdir)
 except OSError:
     pass
 
 
 
-collate(folder1,folder2,lat_target,lon_target,sim_side,do_clustering,tag)
+collate(indir,outdir,lat_target,lon_target,sim_side,do_clustering,tag)
 
