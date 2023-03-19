@@ -6,7 +6,7 @@
 docontinuum=false
 dohi=false
 doxmatch=false
-wrap=false
+dowrap=false
 params=
 while [ $# -gt 0 ]
 do
