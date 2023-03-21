@@ -46,7 +46,7 @@ program wrapper
   integer(I8B):: Nrows
   integer::Nfiles,i,Ncols,iostat,l,ii,l_tagname,i_lat,i_lon,i_x,i_y,i_x1,i_y1
   integer status,unit,rows,nrows_i,readwrite,blocksize,hdutype,tfields,IERR
-  integer::bitpix,naxis,naxes ,jj,do_clustering
+  integer::bitpix,naxis,naxes ,jj,do_flatuniform
   integer(I4B), dimension(:),  allocatable :: listpix,listpix_copy(:)
   integer(I4B)::nside,nlist,ipix,ipix2
   INTEGER, DIMENSION(8,2) :: values_time
@@ -137,8 +137,8 @@ program wrapper
   ! to compute the sky area. for the random coordinates, the FoV is taken as a circle
 
   description = concatnl( &
-       & " Do you want to simulate clustering (only for a max size=5, 0=no, 1=yes)?")
-  do_clustering = parse_int(handle, 'do_clustering', default=0, vmax=1, descr=description)
+       & " Do you want to simulate coordinates with flat approximation (0=no, 1=yes)?")
+  do_flatuniform = parse_int(handle, 'do_flatuniform', default=0, vmax=1, descr=description)
 
   !string formatting: eliminate spaces between path and file name
   tag=ADJUSTL(tag)
@@ -221,7 +221,7 @@ program wrapper
 
 
 
-  if (do_clustering==0) then
+  if (do_flatuniform==0) then
      !initialization necessary for generating random coordinates
      !getting the list of healpix pixels in the area
 
@@ -320,7 +320,7 @@ program wrapper
 
 
 
-     select case(do_clustering)
+     select case(do_flatuniform)
 
      case(0)
         ! generate random coordinates for a disc of specified area 
