@@ -36,7 +36,7 @@ program sampler
   real(sp),parameter::flagvalue=-100.
 
   !character variables
-  character(LEN=filenamelen)::paramfile,description,dummy,outdir,indir
+  character(LEN=filenamelen)::paramfile,description,dummy,outdir,indir,rawdir
   real(dp),allocatable::frequencies(:),frequencies_rest(:),Lsyn(:),Lfree(:),Ld(:)
   real(sp),allocatable::spec(:)
   real(dp)::nu,deltanu,sfr,mn,mx,volume,integ,volumetot,fom,fom_old
@@ -93,7 +93,7 @@ program sampler
   integer::no_AGN,no_SFG,save_lums,Nsample_binned,istart(1),iend(1),istart_i,iend_i,iii,jstart
   integer*8::Nsample,Nsample_lerg,Nsample_herg,join,k,n_hist,nside,ntiles,t,Nsample100
   integer::iseed,Nfreq,Nfreq_out,i,ii,nrows,nrows_sfrtab,Ncolumns,Ncolumns_lf,nskip,Ngen,Ngen2,jj,kk,nrows_sf,seed_fix
-  integer::buffer_size,buffer_free,jbuf,buffer_free_old,buffer_size_old,l_outdir,l_indir
+  integer::buffer_size,buffer_free,jbuf,buffer_free_old,buffer_size_old,l_outdir,l_indir,l_rawdir
   integer::count,Ncat_common,nrows_lerg,nrows_herg,seed(34),nrows_old,nrows_lf
   integer::Nsample_old,Nfunction,Nsample_surv,Nhaloes,Nsample_mass,nreds_out
   integer::l,j,nreds,nreds2,nreds_cone,zi,nloop,ist,iostat,nreds_lum,islice
@@ -102,6 +102,7 @@ program sampler
   integer::N,N3,Nran,reason,iunit
   integer,allocatable::indx(:,:),indx2(:,:),poisson_numbers(:),optclass(:)
   logical::first=.true.
+  integer::system_status
   !types variables
   TYPE(paramfile_handle) :: handle
   !Baugh et al. 2019 eq 7 parameters 
@@ -200,6 +201,19 @@ program sampler
   indir=ADJUSTL(indir)
   l_indir=LEN_TRIM(indir)
 
+  !string formatting: eliminate spaces between path and file name
+  outdir=ADJUSTL(outdir)
+  l_outdir=LEN_TRIM(outdir)
+
+  ! rename output directory and create it if does not exist
+  rawdir=outdir(1:l_outdir)//'/raw_continuum'
+  rawdir=ADJUSTL(rawdir)
+  l_rawdir=LEN_TRIM(rawdir)
+  system_status = SYSTEM( 'mkdir -p '//rawdir(1:l_rawdir) )
+  if ( system_status /= 0 ) then
+     stop system_status
+  endif
+
   !***************************************************
   !Global filenames for the input data to be read:
   !
@@ -248,13 +262,6 @@ program sampler
 
   call random_seed(PUT=seed)  ! feeding to Poisson and Gaussian generator 
   rn=rand(iseed+807820) ! initialise random uniform generator
-
-
-
-  !string formatting: eliminate spaces between path anf file name
-  outdir=ADJUSTL(outdir)
-  l_outdir=LEN_TRIM(outdir)
-
 
   !simulation area 
   sim_area=sim_side*sim_side
@@ -568,9 +575,6 @@ program sampler
      nreds_out=nreds_out+1
   endif
 
-
-
-
   ! names of AGN populations
   !  names(1)='FSRQ'
   !  names(2)='BLLac'
@@ -578,6 +582,8 @@ program sampler
 
   alphamed=(/-0.1,-0.1,-0.72/) ! median spectral index for the three populations. SS spectral index Bonato et al. 2021 
 
+  ! open summary file for wrapper
+  open(42, file = outdir(1:l_outdir)//'/slices_continuum.dat', status = 'new')
   do zi=1,nreds_out-1   ! Main redshift loop 
 
      z=redshifts(zi)
@@ -1713,8 +1719,10 @@ program sampler
 
         ! writing catalogue to disk
         if (Nsample_old /=0) then 
-           cat_filename=outdir(1:l_outdir)//'/catalogue_continuum_z'//zstr//'.fits'
+           cat_filename=rawdir(1:l_rawdir)//'/catalogue_continuum_z'//zstr//'.fits'
            call write_catalogue_new(cat_filename,catout,Ncat_common,tagnames,tunit,tform)
+           !write in summary file:
+           write(42,*)zstr
            ! catalogue written
            print*,'done'
            deallocate(catout)
@@ -1726,6 +1734,8 @@ program sampler
 
   enddo
 
+  ! close summary file (input data for wrapper)
+  close(42)
 
   ! free memory
   deallocate(poladistr,x3,px3,alphascaling_48_20,alphascaling_14_48,alphascaling_015_14)

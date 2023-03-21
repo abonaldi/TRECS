@@ -33,7 +33,7 @@ program sampler
   real, parameter::  logmstar_0=9.94, alpha=-1.25,phistar=4.5e-3!, ! Jones et al. 2018 mass function parameters
   real, parameter::  A=2.902, B=5.439,sigma_logv=0.125!, ! Katz et al. 2018 Mh-vflat relation 
   !character variables
-  character(LEN=filenamelen)::paramfile,description,dummy,outdir,MHI_filename,MHI2Mh_filename
+  character(LEN=filenamelen)::paramfile,description,dummy,outdir,rawdir,MHI_filename,MHI2Mh_filename
   character(LEN=filenamelen)::chline,filestat,cat_filename
   character(LEN=16),allocatable::tagnames(:),tunit(:),tform(:)
   !character(LEN=10)::names(3)
@@ -64,7 +64,7 @@ program sampler
   real(dp)::Ngen_db,norm
   real(dp)::dx,xmin,xmax,zlow,zhigh,z
   integer*8::Nsample,test
-  integer::buffer_size,buffer_free,jbuf,buffer_free_old,buffer_size_old,l_outdir
+  integer::buffer_size,buffer_free,jbuf,buffer_free_old,buffer_size_old,l_outdir,l_rawdir
   integer::Nsample_old,Nfunction,Nsample_surv,nreds_out,nreds,Ncat_HI,nrows,Ncolumns,nrows_mf,nskip,zi
   integer(4) :: ic4, crate4, cmax4!,ni,sum_plus,p14(1),i14,ilim,i48,p(1),p_i,try
   integer::seed(34),iseed,iostat,seed_fix
@@ -72,6 +72,7 @@ program sampler
   integer::N,Nran,i,j!,reason,iunit
   integer,allocatable::poisson_numbers(:)
   logical::first=.true.
+  integer::system_status
 
 !!$  !types variables
   TYPE(paramfile_handle) :: handle
@@ -166,6 +167,14 @@ program sampler
   outdir=ADJUSTL(outdir)
   l_outdir=LEN_TRIM(outdir)
 
+  ! rename output directory and create it if does not exist
+  rawdir=outdir(1:l_outdir)//'/raw_HI'
+  rawdir=ADJUSTL(rawdir)
+  l_rawdir=LEN_TRIM(rawdir)
+  system_status = SYSTEM( 'mkdir -p '//rawdir(1:l_rawdir) )
+  if ( system_status /= 0 ) then
+     stop system_status
+  endif
 
   !simulation area 
   sim_area=sim_side*sim_side
@@ -295,7 +304,8 @@ program sampler
      nreds_out=nreds_out+1
   endif
 
-
+  ! open summary file for wrapper
+  open(42, file = outdir(1:l_outdir)//'/slices_HI.dat', status = 'new')
   ! main redshift loop
   do zi=1,nreds_out-1
      z=redshifts(zi)
@@ -618,9 +628,11 @@ program sampler
         if (Nsample /=0) then 
            print*,'writing'
            ! wrinting catalogue to disk
-           cat_filename=outdir(1:l_outdir)//'/catalogue_HI_z'//zstr//'.fits'
+           cat_filename=rawdir(1:l_rawdir)//'/catalogue_HI_z'//zstr//'.fits'
 
            call write_catalogue_new(cat_filename,catout,Ncat_hi,tagnames,tunit,tform)
+           !write in summary file:
+           write(42,*)zstr
            ! catalogue written
            print*,'done'
            deallocate(catout)
@@ -628,6 +640,9 @@ program sampler
      endif
 
   enddo !loop on redshifts
+
+  ! close summary file (input data for wrapper)
+  close(42)
 
   !free all memory
   deallocate(redshifts,redshift_names)

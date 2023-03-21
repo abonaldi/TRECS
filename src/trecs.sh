@@ -7,6 +7,7 @@ docontinuum=false
 dohi=false
 doxmatch=false
 dowrap=false
+wraptag=none
 params=
 while [ $# -gt 0 ]
 do
@@ -22,6 +23,25 @@ do
 	    ;;
 	-w|--wrap)
 	    dowrap=true
+	    wraptag=$2
+	    case $wraptag in
+		"-"*|"")
+		    wraptag=none
+		    ;;
+		HI)
+		    shift
+		    ;;
+		continuum)
+		    shift
+		    ;;
+		continuum_HI)
+		    shift
+		    ;;
+		*)
+		    echo "Error: provided wrap-tag '$wraptag' is not valid" 1>&2
+		    exit 1
+		    ;;
+	    esac
 	    ;;
 	-p|--params)
 	    params=$2
@@ -64,9 +84,11 @@ Optional arguments:
         HI properties in case both have been generated 
         (default=false)
 
-    -w, --wrap
-    	whether to wrap all the resulting catalogues into one
-	(NOTE: the un-wrapped catalogues will be removed)
+    -w, --wrap [tag]
+    	whether to wrap all the resulting catalogues into one.
+	Argument 'tag' is optional, if none is passed it will
+	either be read from the parameter file or set to its 
+	default value (i.e. 'continuum')
 
     -h, --help
         display this help message and exit
@@ -91,32 +113,27 @@ fi
 #############################################################################################
 # Checking python dependencies before running
 
-# necessary for both Wrapper and X-matcher:
-if [ $dowrap = true || $doxmatch = true ]; then
-
-   # AstroPy
-   python -c 'import astropy' 2>/dev/null
-   if [ $? != 0 ]; then
-       echo "Error: TRECS needs the AstroPy package of python to run" 1>&2
-       exit 1
-   fi
-   
-fi
-
 # necessary only for the X-matcher:
 if [ $doxmatch = true ]; then
+
+    # AstroPy
+    python -c 'import astropy' 2>/dev/null
+    if [ $? != 0 ]; then
+	echo "Error: TRECS needs the AstroPy package of python to run X-matching" 1>&2
+	exit 1
+    fi
 
     # SKLearn
     python -c 'import sklearn' 2>/dev/null
     if [ $? != 0 ]; then
-	echo "Error: TRECS needs the SKLearn package of python to run" 1>&2
+	echo "Error: TRECS needs the SKLearn package of python to run X-matching" 1>&2
 	exit 1
     fi
 
     # NumPy
     python -c 'import numpy' 2>/dev/null
     if [ $? != 0 ]; then
-	echo "Error: TRECS needs the NumPy package of python to run" 1>&2
+	echo "Error: TRECS needs the NumPy package of python to run X-matching" 1>&2
 	exit 1
     fi
 
@@ -148,8 +165,11 @@ fi
 # here do wrapping
 
 if [ $dowrap = true ]; then
-    # trecs_wrapper
-    echo
+    if [ $wraptag = none ]; then
+        trecs_wrapper --params $params
+    else
+	trecs_wrapper --params $params --tag $wraptag
+    fi
 fi
 
 #############################################################################################
