@@ -1,3 +1,4 @@
+#@PYTHONSHEBANG@
 
 # Assigns counterparts between HI and continuum T-RECS catalogues by creating a crossmatched catalogue
 # the quantity matched between the two catalogues if the HI mass, called MHI in the HI catalogue and MHI_pred in the continuum catalogue
@@ -7,6 +8,7 @@
 # History
 #---------------------------------
 # A. Bonaldi 14/7/21 first version
+# T. Ronconi 21/3/23 I/O mods and argument parsing
 
 
 
@@ -16,39 +18,69 @@ from sklearn.neighbors import NearestNeighbors
 import numpy as np
 import os, glob, sys
 from astropy.io import fits
-#import matplotlib
-#from matplotlib import pyplot as plt
 import astropy
-#from collections import Counter
 from astropy.table import Table
 from astropy.table import Column
 
 import time
  
 tstart = time.time()
-print('Number of arguments:', len(sys.argv), 'arguments.')
-print('Argument List:', sys.argv)
-zmin=float(sys.argv[1])
-zmax=float(sys.argv[2])
-print(zmin,zmax)
 
-fov=5. # Field of view of the crossmatched catalogue
+################################################################
+# Read parameter file
 
-path_HI='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/hi/' #path if HI catalogues
-tag='HI'      #tag in the file name of HI catalogues
-sim_side=5.   #size of square HI simulation (degs)
+# Check a parameter file is passed
+if len(sys.argv) != 2 :
+    raise RuntimeError(f'script {sys.argv[0]} needs a parameter file to run')
 
-path_cont='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/continuum/' #path of continuum catalogue
-sim_side_c=5. #size of square continuum simulation (degs)
-tag_c='continuum' #tag in the file name of continuum catalogues
+# check that the path passed is a file
+# and in case read it
+if os.path.isfile(sys.argv[1]) :
+    with open(sys.argv[1], 'r') as f :
+        lines = f.readlines()
+else :
+    raise RuntimeError(f'provided path {sys.argv[1]} is not a file')
 
-path_out='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/cross/' #path of output catalogues
+# remove commented lines and \newlines
+lines = [ line[:-1].split('#')[0] for line in lines if line[0] != '#' ]
 
-####end general settings
+# create content dictionary from parameter file
+content = { k.lstrip().rstrip() : v.lstrip().rstrip()
+            for (k,v) in [
+                    line.split("=")
+                    for line in lines
+                    if len(line) > 0
+            ]
+}
 
-if (sim_side < fov) or (sim_side_c < fov):
-    print("Error: input catalogue(s) smaller than the required FoV")
-    exit()
+################################################################
+# Parse arguments
+
+zmin = np.max( 0.0, float(content['zmin']) ) # no redshift < 0.0
+zmax = np.min( 0.5, float(content['zmax']) ) # no redshift > 0.5 (because of HI limit)
+print( f'Cross matching in the redshift range {zmin:.3f} <= z <= {zmax:.3f}' )
+
+# Field of view of the crossmatched catalogue
+fov = float(content['sim_side'])
+
+# output directory parsing and check existence
+path_out=content['outdir']
+if not os.path.isdir(path_out) :
+    raise RuntimeError(f'output directory {path_out} does not exist')
+
+# set tags
+tag_HI='HI'
+tag_cont='continuum'
+
+# tags/input directories parsing and check existence
+path_HI=os.path.join(content['outdir'], 'raw_'+tag_HI) #path of HI catalogues
+if not os.path.isdir(path_HI) :
+    raise RuntimeError(f'input HI directory {path_HI} does not exist')
+path_cont=os.path.join(content['outdir'], 'raw_'+tag_cont) # path of continuum catalogue
+if not os.path.isdir(path_cont) :
+    raise RuntimeError(f'input continuum directory {path_cont} does not exist')
+
+########################################### end general settings
 
 halfside=fov/2.
 
@@ -61,7 +93,7 @@ redshift_names=['0.01','0.02','0.05','0.10','0.15','0.20','0.25','0.30','0.35','
 
 for i in range(len(redshift_names)):
     z=redshift_names[i]
-    cat_name1 = path_HI+'catalogue_'+tag+'_z'+z+'.fits'
+    cat_name1 = path_HI+'catalogue_'+tag_HI+'_z'+z+'.fits'
     if (os.path.isfile(cat_name1) == True):
         cat_fits1 = fits.open(cat_name1)
         cols1 = cat_fits1[1].columns.names
@@ -69,7 +101,7 @@ for i in range(len(redshift_names)):
 
 for i in range(len(redshift_names)):
     z=redshift_names[i]
-    cat_name2 = path_cont+'catalogue_'+tag_c+'_z'+z+'.fits'
+    cat_name2 = path_cont+'catalogue_'+tag_cont+'_z'+z+'.fits'
     if (os.path.isfile(cat_name2) == True):
         cat_fits2 = fits.open(cat_name2)
         cols2 = cat_fits2[1].columns.names
@@ -101,7 +133,7 @@ for i in range(len(redshift_names)):
         ngals=0 #initialise number of objects - for the case where file does not exist
         nhaloes=0
         
-        cat_name1 = path_HI+'catalogue_'+tag+'_z'+z+'.fits'
+        cat_name1 = path_HI+'catalogue_'+tag_HI+'_z'+z+'.fits'
         
         if (os.path.isfile(cat_name1) == True):
             cat1 = Table.read(cat_name1, format='fits')
@@ -110,7 +142,7 @@ for i in range(len(redshift_names)):
             cat1=cat1[(np.abs(cat1['x_coord']) <= halfside)*(np.abs(cat1['y_coord']) <= halfside)]     
             ngals=len(cat1['x_coord'])
         
-        cat_name2 = path_cont+'catalogue_'+tag_c+'_z'+z+'.fits'
+        cat_name2 = path_cont+'catalogue_'+tag_cont+'_z'+z+'.fits'
         
         if (os.path.isfile(cat_name2) == True):
             cat2 = Table.read(cat_name2, format='fits')

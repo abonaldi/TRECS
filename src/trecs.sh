@@ -157,6 +157,7 @@ fi
 # Cross-match on-demand
 
 if [ $doxmatch = true ]; then
+    trecs_xmatch_hi $params
     # trecs_sampler_xmatch $params
     echo
 fi

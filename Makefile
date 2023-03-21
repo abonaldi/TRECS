@@ -29,6 +29,7 @@ MODDIR = $(PREFIX)/mod
 ifdef F90RMOD
 F90FLAGS += $(F90RMOD) $(MODDIR)
 endif
+PYTHONDIR = $(TOPSRCDIR)/python
 
 ###############################################################################################
 # Define objects
@@ -37,14 +38,13 @@ OBJ_MOD = $(BUILDDIR)/random_modules.o $(BUILDDIR)/sampler_io.o $(BUILDDIR)/samp
 OBJ_CON = $(BUILDDIR)/sampler_continuum.o
 OBJ_HyI = $(BUILDDIR)/sampler_hi.o
 OBJ_WRP = $(BUILDDIR)/wrapper.o
-OBJ_XMC = $(BUILDDIR)/xmatch.o
 
 ###############################################################################################
 # Rules to build library
 
 default: all
 
-all: mkdirs modules continuum hi xmatch wrapper ending
+all: mkdirs modules continuum hi xmatch_hi wrapper ending
 
 mkdirs:
 	mkdir -p $(BUILDDIR) $(MODDIR) $(PREFIX)/bin 
@@ -57,8 +57,10 @@ continuum: $(OBJ_MOD) $(OBJ_CON)
 hi: $(OBJ_MOD) $(OBJ_HyI)
 	$(F90) $(F90FLAGS) -o $(PREFIX)/bin/trecs_sampler_hi $(OBJ_MOD) $(OBJ_HyI) $(LINK)
 
-xmatch: $(OBJ_MOD) $(OBJ_XMC)
-	$(F90) $(F90FLAGS) -o $(PREFIX)/bin/trecs_xmatch $(OBJ_MOD) $(OBJ_XMC) $(LINK)
+xmatch_hi: $(PYTHONDIR)/xmatch_hi.py
+	sed "s|@PYTHONSHEBANG@|! $(shell which python)|" $(PYTHONDIR)/xmatch_hi.py \
+	> $(PREFIX)/bin/trecs_xmatch_hi && \
+	chmod u+x $(PREFIX)/bin/trecs_xmatch_hi
 
 wrapper: $(OBJ_MOD) $(OBJ_WRP)
 	$(F90) $(F90FLAGS) -o $(PREFIX)/bin/trecs_wrapper $(OBJ_MOD) $(OBJ_WRP) $(LINK)

@@ -10,7 +10,7 @@ SHELL = /bin/sh
 
 # PREFIX sets the root directory for installation of the binaries
 #
-PREFIX = /tmp/TRECSlib
+PREFIX = /opt/trecs/2.0
 
 #  CC is the C compiler, normally invoked with options CFLAGS.
 #
