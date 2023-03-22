@@ -6,6 +6,7 @@
 docontinuum=false
 dohi=false
 doxmatch=false
+doclustering=false
 dowrap=false
 wraptag=none
 params=
@@ -21,6 +22,9 @@ do
 	-x|--xmatch)
 	    doxmatch=true
 	    ;;
+	-C|--clustering)
+	    doclustering=true
+	    ;;
 	-w|--wrap)
 	    dowrap=true
 	    wraptag=$2
@@ -28,13 +32,13 @@ do
 		"-"*|"")
 		    wraptag=none
 		    ;;
-		HI)
+		HI|HI_clustered)
 		    shift
 		    ;;
-		continuum)
+		continuum|continuum_clustered)
 		    shift
 		    ;;
-		HI_continuum)
+		HI_continuum|HI_continuum_clustered)
 		    shift
 		    ;;
 		*)
@@ -83,6 +87,12 @@ Optional arguments:
         whether to cross-match continuum properties with
         HI properties in case both have been generated 
         (default=false)
+
+    -C, --clustering
+    	whether to add clustering properties to a catalogue
+	NOTE that this will be possible only for catalogues with
+	size <= 5 degrees. Which catalogue to run this on
+	is controlled through the parameter file
 
     -w, --wrap [tag]
     	whether to wrap all the resulting catalogues into one.
@@ -154,12 +164,17 @@ if [ $dohi = true ]; then
 fi
 
 #############################################################################################
-# Cross-match on-demand
+# Cross-match HI on-demand
 
 if [ $doxmatch = true ]; then
     trecs_xmatch_hi $params
-    # trecs_sampler_xmatch $params
-    echo
+fi
+
+#############################################################################################
+# Add clustering on-demand
+
+if [ $doclustering = true ]; then
+    trecs_xmatch_clustering $params
 fi
 
 #############################################################################################

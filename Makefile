@@ -44,7 +44,7 @@ OBJ_WRP = $(BUILDDIR)/wrapper.o
 
 default: all
 
-all: mkdirs modules continuum hi xmatch_hi wrapper ending
+all: mkdirs modules continuum hi xmatch_hi xmatch_clustering wrapper ending
 
 mkdirs:
 	mkdir -p $(BUILDDIR) $(MODDIR) $(PREFIX)/bin 
@@ -61,6 +61,11 @@ xmatch_hi: $(PYTHONDIR)/xmatch_hi.py
 	sed "s|@PYTHONSHEBANG@|! $(shell which python)|" $(PYTHONDIR)/xmatch_hi.py \
 	> $(PREFIX)/bin/trecs_xmatch_hi && \
 	chmod u+x $(PREFIX)/bin/trecs_xmatch_hi
+
+xmatch_clustering: $(PYTHONDIR)/xmatch_clustering.py
+	sed "s|@PYTHONSHEBANG@|! $(shell which python)|" $(PYTHONDIR)/xmatch_clustering.py \
+	> $(PREFIX)/bin/trecs_xmatch_clustering && \
+	chmod u+x $(PREFIX)/bin/trecs_xmatch_clustering
 
 wrapper: $(OBJ_MOD) $(OBJ_WRP)
 	$(F90) $(F90FLAGS) -o $(PREFIX)/bin/trecs_wrapper $(OBJ_MOD) $(OBJ_WRP) $(LINK)
