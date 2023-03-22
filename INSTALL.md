@@ -1,32 +1,38 @@
 # T-RECS
 
-T-RECS is a software package composed of three fortran codes
-- sampler_continuum to create radio continuum simulated catalogues
-- sampler_hi to create HI simulated catalogues
-- wrapper to collate different redshift slices of a simulation and project the coordinates to a chosen field of view in the sky. 
+T-RECS is a software package composed of three fortran executables
+- trecs_sampler_continuum to create radio continuum simulated catalogues
+- trecs_sampler_hi to create HI simulated catalogues
+- trecs_wrapper to collate different redshift slices of a simulation and
+  project the coordinates to a chosen field of view in the sky. 
 
-and some ancillary python scripts. 
+and some ancillary python scripts for catalogue cross-matching.
+
+All the executables above are conveniently wrapped into a bash script called 'trecs' that
+accepts different flags for customised usage.
 
 To build the package for the first time:
 
 1) download the archive 
 
-https://www.dropbox.com/s/crkzwho0hqc565g/TRECS_Inputs.tgz?dl=0
+   https://www.dropbox.com/s/crkzwho0hqc565g/TRECS_Inputs.tgz?dl=0
 
-(size 12 GB)
-which contains input files with all the models used by the sampler code. Once extracted, 
+   (size 12 GB)
+   which contains input files with all the models used by the sampler code.
+   Once downloaded, extract it with 
 
-tar -xvf TRECS_Inputs.tgz
+   tar -xvf TRECS_Inputs.tgz
 
-move the folder without renaming it in the same folder where the T-RECS code folder is. Your folder should now contain: 
+   the location of the extracted folder will need to be added to your parameter file when running.
 
-TRECS  TRECS_Inputs
+2) check that you have a fortran compiler and the following libraries and packages installed:
+   - fortran: GSL, Lapack, Healpix, cfitsio
+   - python: NumPy, AstroPy, SKLearn
 
-2) check that you have a fortran compiler and these libraries are installed: GSL, Lapack, Healpix, cfitsio
-
-3) edit  The input makefile `make.inc` with your paths and compiler options
+3) edit the input makefile `make.inc` (within this directory) with your paths and compiler options
 
 4) run `make`. The executables are saved in the bin folder at the PREFIX provided in `make.inc` 
 
-
-the python scripts require astropy and astropy.io to run.
+Everything should be installed correctly, an example of parameter file and of the frequency list file
+are available in example/parameter_file.ini and example/frequency_list.dat files respectively
+(within the root directory).
