@@ -56,17 +56,22 @@ content = { k.lstrip().rstrip() : v.lstrip().rstrip()
 ################################################################
 # Parse arguments
 
-zmin = np.max( 0.0, float(content['zmin']) ) # no redshift < 0.0
-zmax = np.min( 0.5, float(content['zmax']) ) # no redshift > 0.5 (because of HI limit)
+zmin = np.max( [ 0.0, float(content['z_min']) ] ) # no redshift < 0.0
+zmax = np.min( [ 0.5, float(content['z_max']) ] ) # no redshift > 0.5 (because of HI limit)
 print( f'Cross matching in the redshift range {zmin:.3f} <= z <= {zmax:.3f}' )
 
 # Field of view of the crossmatched catalogue
 fov = float(content['sim_side'])
 
 # output directory parsing and check existence
-path_out=content['outdir']
+if not os.path.isdir(content['outdir']) :
+    raise RuntimeError(f'output directory {content["outdir"]} does not exist')
+path_out=os.path.join( content['outdir'], 'raw_HI_continuum' )
 if not os.path.isdir(path_out) :
-    raise RuntimeError(f'output directory {path_out} does not exist')
+    try :
+        os.mkdir(path_out)
+    except :
+        raise
 
 # set tags
 tag_HI='HI'
@@ -93,7 +98,7 @@ redshift_names=['0.01','0.02','0.05','0.10','0.15','0.20','0.25','0.30','0.35','
 
 for i in range(len(redshift_names)):
     z=redshift_names[i]
-    cat_name1 = path_HI+'catalogue_'+tag_HI+'_z'+z+'.fits'
+    cat_name1 = os.path.join( path_HI,'catalogue_'+tag_HI+'_z'+z+'.fits' )
     if (os.path.isfile(cat_name1) == True):
         cat_fits1 = fits.open(cat_name1)
         cols1 = cat_fits1[1].columns.names
@@ -101,7 +106,7 @@ for i in range(len(redshift_names)):
 
 for i in range(len(redshift_names)):
     z=redshift_names[i]
-    cat_name2 = path_cont+'catalogue_'+tag_cont+'_z'+z+'.fits'
+    cat_name2 = os.path.join( path_cont, 'catalogue_'+tag_cont+'_z'+z+'.fits' )
     if (os.path.isfile(cat_name2) == True):
         cat_fits2 = fits.open(cat_name2)
         cols2 = cat_fits2[1].columns.names
@@ -118,6 +123,7 @@ for i in range(len(cols2)):
 
 #end initialise format
 
+mask_z = np.zeros_like(redshift_names, dtype=bool)
 #start main loop
 for i in range(len(redshift_names)):
 
@@ -126,6 +132,9 @@ for i in range(len(redshift_names)):
 
     if (np.float(z) >= zmin) and (np.float(z) <= zmax):
 
+        # for final slices file
+        mask_z[i] = True
+
         print('********************')
         print('Processing redshift',z)
         print('********************')
@@ -133,7 +142,7 @@ for i in range(len(redshift_names)):
         ngals=0 #initialise number of objects - for the case where file does not exist
         nhaloes=0
         
-        cat_name1 = path_HI+'catalogue_'+tag_HI+'_z'+z+'.fits'
+        cat_name1 = os.path.join( path_HI, 'catalogue_'+tag_HI+'_z'+z+'.fits' )
         
         if (os.path.isfile(cat_name1) == True):
             cat1 = Table.read(cat_name1, format='fits')
@@ -142,7 +151,7 @@ for i in range(len(redshift_names)):
             cat1=cat1[(np.abs(cat1['x_coord']) <= halfside)*(np.abs(cat1['y_coord']) <= halfside)]     
             ngals=len(cat1['x_coord'])
         
-        cat_name2 = path_cont+'catalogue_'+tag_cont+'_z'+z+'.fits'
+        cat_name2 = os.path.join( path_cont, 'catalogue_'+tag_cont+'_z'+z+'.fits' )
         
         if (os.path.isfile(cat_name2) == True):
             cat2 = Table.read(cat_name2, format='fits')
@@ -180,7 +189,7 @@ for i in range(len(redshift_names)):
             cat2['Mh']=cat2['Mh_1']
         
 
-        cat_name1_out = path_out+'catalogue_HI_continuum_z'+z+'.fits' 
+        cat_name1_out = os.path.join( path_out,'catalogue_HI_continuum_z'+z+'.fits' )
        
 
         #start reading catalogue values
@@ -263,6 +272,15 @@ for i in range(len(redshift_names)):
             print('writing updated catalogue file')
             catout.write(cat_name1_out,format='fits', overwrite = True)
 
+# Writing redshift slices file
+with open(
+        os.path.join(
+            content['outdir'],
+            '_'.join(['slices',
+                      tag_HI,
+                      tag_cont])+'.dat'
+        ), 'w' ) as outf :
+    for z in np.array( redshift_names )[mask_z] : outf.write(f'{z}\n')                        
                 
 tend = time.time()
 print ('...done in {0} seconds.'.format(tend-tstart))

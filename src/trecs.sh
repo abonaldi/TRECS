@@ -34,7 +34,7 @@ do
 		continuum)
 		    shift
 		    ;;
-		continuum_HI)
+		HI_continuum)
 		    shift
 		    ;;
 		*)
