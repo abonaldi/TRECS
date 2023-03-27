@@ -34,7 +34,7 @@ print(zmin,zmax)
 
 fov=5. # Field of view of the crossmatched catalogue
 
-path_HI='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/hi/' #path if HI catalogues
+path_HI='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/hi_rev/' #path if HI catalogues
 tag='HI'      #tag in the file name of HI catalogues
 sim_side=5.   #size of square HI simulation (degs)
 
@@ -42,7 +42,7 @@ path_cont='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/continu
 sim_side_c=5. #size of square continuum simulation (degs)
 tag_c='continuum' #tag in the file name of continuum catalogues
 
-path_out='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/cross/' #path of output catalogues
+path_out='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/cross_rev/' #path of output catalogues
 
 ####end general settings
 
@@ -226,7 +226,7 @@ for i in range(len(redshift_names)):
             # Those were all random uniform generation within the given ranges so
             # the redundant set do not contain any useful information
             # the second dark halo mass Mh_1 is kept as it comes from continuum model instead of HI 
-            catout.remove_columns(['x_coord_1','y_coord_1','redshift_1'])
+            catout.remove_columns(['x_coord_1','y_coord_1','redshift_1','latitude_1','longitude_1'])
                       
             print('writing updated catalogue file')
             catout.write(cat_name1_out,format='fits', overwrite = True)

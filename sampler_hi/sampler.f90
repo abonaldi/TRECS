@@ -31,12 +31,13 @@ program sampler
   real, parameter::sterad_deg=3283. 
   REAL, PARAMETER :: Mpc=10.**6*pc
   real, parameter::  logmstar_0=9.94, alpha=-1.25,phistar=4.5e-3!, ! Jones et al. 2018 mass function parameters
-  real, parameter::  A=2.902, B=5.439,sigma_logv=0.125!, ! Katz et al. 2018 Mh-vflat relation 
+  real, parameter::  Ah=2.902, Bh=5.439,sigma_ah=0.125!, ! Katz et al. 2018 Mh-vflat relation
+
+  real, parameter::  A=3.623, B=2.406,sigma_logv=0.0209!, ! Katz et al. 2018 Mb-vflat relation ,sigma_logv=0.0209!, ! Katz et al. 2018 Mb-vflat relation 
   !character variables
   character(LEN=filenamelen)::paramfile,description,dummy,outdir,MHI_filename,MHI2Mh_filename
   character(LEN=filenamelen)::chline,filestat,cat_filename
   character(LEN=16),allocatable::tagnames(:),tunit(:),tform(:)
-  !character(LEN=10)::names(3)
   CHARACTER(LEN=5) :: output,output2,tag
   CHARACTER(LEN=10) ::output3
   CHARACTER(LEN=80), DIMENSION(1:120) :: header
@@ -47,20 +48,19 @@ program sampler
   !single precision variables
   real(sp)::z_min,z_max,mu,clock_time,coo_max,coo_min
   real(sp)::masslim,fluxlim,dm_model,dim,sin_i,cos_i
-  real(sp)::q,q2,d_a,flux,flux_conv,rn,C_evol,log_vflat
+  real(sp)::q,q2,d_a,flux,flux_conv,rn,C_evol,log_vflat,stellar_mass,baryonic_mass
   real(sp),allocatable::samplex(:),samplex_slice(:),samplex_copy(:),redshifts(:)
   real(sp),allocatable::zall_slice(:),zall_copy(:)
   real(sp),allocatable::catout(:,:),z_gals(:),sizes(:),fluxes(:),fluxes_slice(:),fluxes_copy(:)
-  real(sp),allocatable::darkmass(:),latitudes(:),longitudes(:),inclinations(:),w50(:),vmax(:)
+  real(sp),allocatable::darkmass(:),latitudes(:),longitudes(:),inclinations(:),w50(:),vmax(:),stellarmass(:)
   real(sp),allocatable::bmaj(:),bmin(:),pa(:),qrat(:)
-  !real(sp),allocatable::MHItab(:),Mhalotab(:)
+
 
 !!$  !double precision variables
   real(dp)::nu,deltanu,sfr,mn,mx,volume,integ,volumetot,fom,fom_old,z_i,mhi,mstar,logmstar,phi
   real(dp)::sim_area,skyfrac,d_l
   real(dp)::sim_side
   real(dp),allocatable::data(:,:),x(:),px(:)
-!  real(dp)::x(100),px(100)
   real(dp)::Ngen_db,norm
   real(dp)::dx,xmin,xmax,zlow,zhigh,z
   integer*8::Nsample,test
@@ -139,8 +139,8 @@ program sampler
   ! end reading input parameters
 
 
-  !'Seeding random number generators'
-  !getting seed for random number generation from the clock
+  !Seeding random number generators
+  !getting seed for random number generation from user or from the clock
 
   if (seed_fix ==-1) then
      call system_clock(count=ic4, count_rate=crate4, count_max=cmax4)
@@ -158,7 +158,7 @@ program sampler
   rn=rand(iseed+807820) ! initialise random uniform generator
 
 
-  !string formatting: eliminate spaces between path anf file name
+  !string formatting: eliminate spaces between path and file name
   outdir=ADJUSTL(outdir)
   l_outdir=LEN_TRIM(outdir)
 
@@ -175,9 +175,6 @@ program sampler
   coo_min=-1.*coo_max
   print*,'coordinates',coo_max,coo_min
 
-  !AGN simulation follows. If no AGN simulation is needed this is skipped
-
-
 
   !*************************
   !HI simulation starts
@@ -185,10 +182,11 @@ program sampler
 
 
   !structure of the catalogue
-  Ncat_hi=17 !
+  Ncat_hi=18 !
   !hi mass
   !hi flux
-  !dark mass,
+  !dark mass
+  !stellar mass
   !proj-latitude
   !proj-longitude
   !latitude
@@ -208,54 +206,75 @@ program sampler
   !creating tag names for the catalogue and units
   allocate(tagnames(Ncat_hi),tunit(Ncat_hi),tform(Ncat_hi))
   j=1
+  !HI mass
   tagnames(j)='MHI'
   tunit(j)='log(Msun)'
   j=j+1
+  !HI flux
   tagnames(j)='HI flux'
   tunit(j)='mJy Hz'
   j=j+1
+  ! dark mass
   tagnames(j)='Mh'
   tunit(j)='log(Msun)'
   j=j+1
+  ! stellar mass mass
+  tagnames(j)='Mstar'
+  tunit(j)='log(Msun)'
+  j=j+1
+  ! shift wrt field centre in the x direction
   tagnames(j)='x_coord'
   tunit(j)='degs'
   j=j+1
+  ! shift wrt field centre in the y direction
   tagnames(j)='y_coord'
   tunit(j)='degs'
   j=j+1
+  ! latitude
   tagnames(j)='latitude'
   tunit(j)='degs'
   j=j+1
+  ! longitude
   tagnames(j)='longitude'
   tunit(j)='degs'
   j=j+1
+  !redhsift
   tagnames(j)='redshift'
   tunit(j)='none'
   j=j+1
+  ! apparent size
   tagnames(j)='HI size'
   tunit(j)='arcsec'
   j=j+1
+  ! inclination
   tagnames(j)='inclination'
   tunit(j)='degs'
   j=j+1
+  ! maximum circular veocity
   tagnames(j)='v_max'
   tunit(j)='Km/s'
   j=j+1
+  ! w50 line width
   tagnames(j)='w50'
   tunit(j)='Km/s'
   j=j+1
+  ! axis ratio
   tagnames(j)='axis ratio'
   tunit(j)='none'
   j=j+1
+  ! major axis
   tagnames(j)='bmaj'
   tunit(j)='arcsec'
   j=j+1
+  ! minor axis
   tagnames(j)='bmin'
   tunit(j)='arcsec'
   j=j+1
+  ! position angle
   tagnames(j)='PA'
   tunit(j)='degs'
   j=j+1
+  ! optical classification
   tagnames(j)='OptClass'
   tunit(j)='none'
 
@@ -299,6 +318,8 @@ program sampler
 
      if ((z_min <= z) .and. (z_max >= z)) then    ! redshift slice with center z is processed
 
+
+        ! compute the mass limit corresponding to the given flux limit
         d_l=lumr(dble(z))!angular diameter distance of the centre of the slice (Mpc)
         flux_conv=d_l**(-2.)/49.8 !Duffy et al. (2012)
         masslim=log10(fluxlim/flux_conv) ! mass limit corresponding to the flux limit specified
@@ -511,8 +532,8 @@ program sampler
 
         print*,'MHIs generated'
 
-        ! compute halo mass from sfr 
-        allocate(Darkmass(Nsample),latitudes(Nsample),&
+        ! allocate other catalogue attributes
+        allocate(Darkmass(Nsample),stellarmass(Nsample),latitudes(Nsample),&
              &longitudes(Nsample),sizes(Nsample),&
              &inclinations(Nsample),qrat(Nsample),bmaj(Nsample),&
              &bmin(Nsample),pa(Nsample),vmax(Nsample),w50(Nsample),stat=iostat)
@@ -527,17 +548,18 @@ program sampler
 
         do i=1,Nsample
 
-
+           ! dark mass model
            dm_model=(10.**samplex(i))**(1./1.2)*3162.28 ! low-mass limit Baugh et al. (2019)
            
            Darkmass(i)=log10(dm_model)
-           
+
+           ! coordinates
            latitudes(i)=(rand()-0.5)*sim_side  ! random coordinates
            longitudes(i)=(rand()-0.5)*sim_side
            z_i=dble(z_gals(i))
 
           
-
+           ! HI size model
            !Naluminsa et al. (2021)
            !logM_HI=(1.95 pm 0.03)log D_HI +(6.5 pm 0.04)
            !log D_HI = (0.51 pm 0.01) log M_HI - (3.33 pm 0.03)
@@ -567,9 +589,18 @@ program sampler
            bmin(i)=q*bmaj(i)     ! apparent bmin
            pa(i)=rand()*360. !random PA in degs
 
-           log_vflat=1./A*(darkmass(i)-B)+random_normal()*sigma_ab
+           stellar_mass=(samplex(i)-2.4)*1./(0.71)
+           stellarmass(i)=stellar_mass
+           baryonic_mass=log10(10.**stellar_mass+10.**samplex(i))
+
+           ! vmax nd w50 model Katz et al. 2018 Mbarion-vflat relation
+           log_vflat=1./A*(baryonic_mass-B)+random_normal()*sigma_logv
+           
            vmax(i)=10.**log_vflat
            w50(i)=vmax(i)*2.*sin(inclinations(i)*pi/180.)
+           !Katz et al. 2018 Mhalo-vflat relation 
+           darkmass(i)=(Ah+random_normal()*sigma_ah)*log_vflat+Bh+random_normal()*0.292
+
            
         enddo
 
@@ -586,23 +617,24 @@ program sampler
         catout(1,:)=samplex(1:Nsample)       ! HI mass
         catout(2,:)=fluxes*1000. ! HI flux mJy/Hz
         catout(3,:)=darkmass
-        catout(4,:)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
-        catout(5,:)=longitudes
-        catout(6,:)=0. ! spherical coordinates - to be filled by wrapper
-        catout(7,:)=0. 
-        catout(8,:)=z_gals
-        catout(9,:)=sizes  
-        catout(10,:)=inclinations
-        catout(11,:)=vmax
-        catout(12,:)=w50
-        catout(13,:)=qrat
-        catout(14,:)=bmaj
-        catout(15,:)=bmin
-        catout(16,:)=pa
-        catout(17,:)=2. ! all HI galaxies have spiral morphology - can be changed after cross-matching with continuum
+        catout(4,:)=stellarmass
+        catout(5,:)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
+        catout(6,:)=longitudes
+        catout(7,:)=0. ! spherical coordinates - to be filled by wrapper
+        catout(8,:)=0. 
+        catout(9,:)=z_gals
+        catout(10,:)=sizes  
+        catout(11,:)=inclinations
+        catout(12,:)=vmax
+        catout(13,:)=w50
+        catout(14,:)=qrat
+        catout(15,:)=bmaj
+        catout(16,:)=bmin
+        catout(17,:)=pa
+        catout(18,:)=2. ! all HI galaxies have spiral morphology - can be changed after cross-matching with continuum
 
     
-        deallocate(samplex,fluxes,darkmass,&
+        deallocate(samplex,fluxes,darkmass,stellarmass,&
              &latitudes,longitudes,z_gals,sizes,&
              &inclinations,pa,qrat,bmin,bmaj,w50,vmax,stat=iostat)
         if (iostat/=0) then

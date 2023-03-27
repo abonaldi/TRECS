@@ -43,17 +43,17 @@ def collate(folder1,folder2,lat_target,lon_target,sim_side,do_clustering,tag):
         input_file.write('cat%i=%s\n'%(i+1,results[i]))
 
     input_file.write('outcat=%s\n'%file)
-    input_file.close()
+    input_xfile.close()
 
     return
 
 
 
 
-folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/cross/'
-folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/'
+#folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/continuum_wide/'
+#folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/'
 
-tag='continuum_HI_21Oct22'
+#tag='continuum_wide_10Mar'
 
 #folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/continuum_theta_p/'
 #folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/'
@@ -62,10 +62,10 @@ tag='continuum_HI_21Oct22'
 
 
 
-#folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/hi/'
-#folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/'
+folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/cross_rev/'
+folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/'
 
-#tag='hi_15sep'
+tag='cross_rev'
 
 #folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/cross_test/'
 #folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_paper2/'
@@ -92,17 +92,17 @@ tag='continuum_HI_21Oct22'
 #tag='test1'
 
 
-tag='100nJy'
-folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_sensitivity_calculator/limit_100/'
-folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_sensitivity_calculator/'
+#tag='100nJy'
+#folder1='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_sensitivity_calculator/limit_100/'
+#folder2='/home/a.bonaldi/data-cold-for-backup/Radio_srccnt/runs_sensitivity_calculator/'
 
 
 lat_target=-30.
 lon_target=0.
 
 do_clustering=1
+#sim_side=25
 sim_side=5
-
 
 
 try:

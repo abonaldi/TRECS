@@ -5,7 +5,12 @@ T-RECS is a software package composed of three fortran codes
 - sampler_hi to create HI simulated catalogues
 - wrapper to collate different redshift slices of a simulation and project the coordinates to a chosen field of view in the sky. 
 
-and some ancillary python scripts. 
+and python scripts
+- xmatch_hi.py to associate conterparts between continuum and hi outputs
+- xmatch_clustering.py to associate counterparts between continuum, hi or cross-matched catalogues and DM cosmological simulation, to add clustering
+- wrapper_input.py to prepare the input file for wrapper
+- addkeys_vizier.py to make the catalogue format compliant with vizier
+
 
 To build the package for the first time:
 
@@ -13,7 +18,7 @@ To build the package for the first time:
 
 https://www.dropbox.com/s/crkzwho0hqc565g/TRECS_Inputs.tgz?dl=0
 
-(size 12 GB)
+(size 8 GB)
 which contains input files with all the models used by the sampler code. Once extracted, 
 
 tar -xvf TRECS_Inputs.tgz

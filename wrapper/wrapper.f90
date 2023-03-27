@@ -17,7 +17,7 @@ program wrapper
   USE fitstools
   USE utilities
   USE pix_tools
-  USE random_tools,only: ran_mwc,randgauss_boxmuller
+!  USE random_tools,only: ran_mwc,randgauss_boxmuller
   use sampler_io, ONLY: rows_catalogue, read_catalogue, columns_catalogue
   USE paramfile_io, ONLY : paramfile_handle, parse_init, parse_int, &
        parse_string, parse_double, parse_lgt, concatnl
@@ -284,13 +284,13 @@ program wrapper
            ! select a random pixel of the list
            do jj=1,nrows_i
 !print*,jj,nrows_i
-              ipix=int(ran_mwc(iseed)*(nlist-1))+1  !extraction of one random pixel position
+              ipix=int(rand()*(nlist-1))+1  !extraction of one random pixel position
               call pix2ang_ring(nside,listpix(ipix),lat_astro,lon_astro)
 111           continue
 
               !add a random shift to coordinates to avoid pixellization effects. Uniform distribution
-              lat_temp=lat_astro+(ran_mwc(iseed)-0.5)*pix_side_rad
-              lon_temp=lon_astro+(ran_mwc(iseed)-0.5)*pix_side_rad/cos(lat_temp)
+              lat_temp=lat_astro+(rand()-0.5)*pix_side_rad
+              lon_temp=lon_astro+(rand()-0.5)*pix_side_rad/cos(lat_temp)
  
               ! ensure new coordinates are within the healpix range 
               if (lat_temp <0.) lat_temp=lat_temp+Pi

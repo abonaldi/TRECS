@@ -104,14 +104,7 @@ program sampler
   logical::first=.true.
   !types variables
   TYPE(paramfile_handle) :: handle
-  !Baugh et al. 2019 eq 7 parameters 
-  real(dp),PARAMETER::A1=5.5e-3
-  real(dp),PARAMETER::A2=1.1e-4
-  real(dp),PARAMETER::logmbreak=11.5539 ! 10.**11.4h-1 for h=0.7
-  real(dp),PARAMETER::alpha_hi=2.5
-  real(dp),PARAMETER::beta_hi=0.2
-  real(dp)::mh,mHI
-  real(dp)::ratio1,ratio2
+
 
   save iseed
 
@@ -187,7 +180,7 @@ program sampler
 
 
   description = concatnl( &
-       & " Do you want to skip the AGN simulation (0=no, 1=yes)")
+       & " Set the seed for random number generation (default=automatic)" )
   seed_fix = parse_int(handle, 'seed', default=-1, descr=description)
 
   ! end reading input parameters
@@ -604,6 +597,7 @@ program sampler
         call read_columns(LERG_filename,2,nrows,Ncolumns,nskip,data)
         lerg_p=data(:,2)
         masses_lerg=data(:,1)
+        
         deallocate(data)
 
         Ncolumns=2
@@ -1123,12 +1117,7 @@ program sampler
 
 
                  himass(i)=himass(i)+random_normal()*0.21 
-                 !!Baugh et al. 2019 MHI/mh relation eq 7
-                 mh=darkmass(i) !log10(mh)
-                 !              !ratio1=10.**(mh-logmbreak)
-                 !              !ratio2=10.**(mh-10.)
-                 !              !mhi=dlog10(A1*exp(-ratio1**alpha_hi)*ratio2**beta_hi+A2)+mh
-                 mhi=dlog10(A2)+mh  ! Baugh et al. high-mass limit for all AGN
+                 
               endif
 
 
