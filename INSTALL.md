@@ -29,7 +29,7 @@ To build the package for the first time:
    - fortran: GSL, Lapack, Healpix, cfitsio
    - python: NumPy, AstroPy, SKLearn
 
-3) edit the input makefile `make.inc` (within this directory) with your paths and compiler options
+3) edit the input makefile `make.inc` (copying it from examples/make.inc within the root repository directory) with your paths and compiler options
 
 4) run `make`. The executables are saved in the bin folder at the PREFIX provided in `make.inc` 
 

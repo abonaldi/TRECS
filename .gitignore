@@ -3,3 +3,5 @@
 **/*.o
 **/*.mod
 bin/*
+make.inc
+
