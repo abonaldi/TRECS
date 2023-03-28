@@ -1,6 +1,0 @@
-sim_side=1.
-fluxlim=1.e-5
-fluxlim_freq=1400.
-freqs_file=frequency_list_paper.dat
-outdir=./
-save_lums=0
