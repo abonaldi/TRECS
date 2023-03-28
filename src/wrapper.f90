@@ -140,6 +140,10 @@ program wrapper
        & " Do you want to simulate coordinates with flat approximation (0=no, 1=yes)?")
   do_flatuniform = parse_int(handle, 'do_flatuniform', default=0, vmax=1, descr=description)
 
+  description = concatnl( &
+       & " Enter the slices file listing all the redshifts to wrap")
+  slice_file=parse_string(handle,'slice_file', default='none', descr=description)
+
   !string formatting: eliminate spaces between path and file name
   tag=ADJUSTL(tag)
   l_tag=LEN_TRIM(tag)
@@ -150,8 +154,12 @@ program wrapper
   outdir=ADJUSTL(outdir)
   l_outdir=LEN_TRIM(outdir)
 
+  
+
   ! cont the number of files to wrap from the summary slice file
-  slice_file = indir(1:l_indir)//'/slices_'//tag(1:l_tag)//'.dat'
+  if (slice_file=='none') then
+     slice_file = indir(1:l_indir)//'/slices_'//tag(1:l_tag)//'.dat'
+  endif
   open( UNIT=42, file=slice_file, status='old', form='formatted' )
   Nfiles = 0
   do while (ierr == 0)

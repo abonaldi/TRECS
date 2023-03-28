@@ -10,7 +10,7 @@ SHELL = /bin/sh
 
 # PREFIX sets the root directory for installation of the binaries
 #
-PREFIX = /opt/trecs/2.0
+PREFIX = /path/to/install/directory
 
 #  CC is the C compiler, normally invoked with options CFLAGS.
 #
@@ -50,24 +50,24 @@ L_GSL = -L$(GSL_LIB) -lgsl -lgslcblas
 
 # CFITSIO library
 #
-CFITSIO_DIR = /opt/cfitsio/4.2.0
+CFITSIO_DIR = /path/to/cfitsio
 CFITSIO_INC = $(CFITSIO_DIR)/include
 CFITSIO_LIB = $(CFITSIO_DIR)/lib
 
 # HEALPIX library
 #
-HEALPIX_DIR = /opt/healpix/3.82
+HEALPIX_DIR = /path/to/healpix
 HEALPIX_INC = $(HEALPIX_DIR)/include
 HEALPIX_LIB = $(HEALPIX_DIR)/lib
 
 # LAPACK library
 #
-LAPACK_DIR = /opt/lapack/3.11.0
+LAPACK_DIR = /path/to/lapack
 LAPACK_LIB = $(LAPACK_DIR)
 
 ###############################################################################################
 
-BUILDDIR = /tmp/TRECS_build
+BUILDDIR = /path/to/build/directory
 
 ###############################################################################################
 
