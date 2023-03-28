@@ -36,7 +36,7 @@ program sampler
   real(sp),parameter::flagvalue=-100.
 
   !character variables
-  character(LEN=filenamelen)::paramfile,description,dummy,outdir
+  character(LEN=filenamelen)::paramfile,description,dummy,outdir,indir,rawdir
   real(dp),allocatable::frequencies(:),frequencies_rest(:),Lsyn(:),Lfree(:),Ld(:)
   real(sp),allocatable::spec(:)
   real(dp)::nu,deltanu,sfr,mn,mx,volume,integ,volumetot,fom,fom_old
@@ -93,7 +93,7 @@ program sampler
   integer::no_AGN,no_SFG,save_lums,Nsample_binned,istart(1),iend(1),istart_i,iend_i,iii,jstart
   integer*8::Nsample,Nsample_lerg,Nsample_herg,join,k,n_hist,nside,ntiles,t,Nsample100
   integer::iseed,Nfreq,Nfreq_out,i,ii,nrows,nrows_sfrtab,Ncolumns,Ncolumns_lf,nskip,Ngen,Ngen2,jj,kk,nrows_sf,seed_fix
-  integer::buffer_size,buffer_free,jbuf,buffer_free_old,buffer_size_old,l_outdir
+  integer::buffer_size,buffer_free,jbuf,buffer_free_old,buffer_size_old,l_outdir,l_indir,l_rawdir
   integer::count,Ncat_common,nrows_lerg,nrows_herg,seed(34),nrows_old,nrows_lf
   integer::Nsample_old,Nfunction,Nsample_surv,Nhaloes,Nsample_mass,nreds_out
   integer::l,j,nreds,nreds2,nreds_cone,zi,nloop,ist,iostat,nreds_lum,islice
@@ -102,6 +102,7 @@ program sampler
   integer::N,N3,Nran,reason,iunit
   integer,allocatable::indx(:,:),indx2(:,:),poisson_numbers(:),optclass(:)
   logical::first=.true.
+  integer::system_status
   !types variables
   TYPE(paramfile_handle) :: handle
 
@@ -127,14 +128,14 @@ program sampler
   endif
 
 
-  ! --- declaration of intent                                                                                       
+  ! --- declaration of intent
   PRINT*," "
   PRINT*,"               "//code
   PRINT*," "
 
-  !*************************************                                                                                       
-  !read input parameters from file or interactively                                                                                        
-  !************************************                                                                                        
+  !*************************************
+  !read input parameters from file or interactively
+  !*************************************
 
   handle = parse_init(paramfile)
 
@@ -156,11 +157,11 @@ program sampler
 
   description = concatnl( &
        & " Enter the flux limit [Jy]: ")
-  fluxlim = parse_double(handle, 'fluxlim', default=10.d-9, descr=description)
+  fluxlim = parse_double(handle, 'fluxlim_cont', default=10.d-9, descr=description)
 
   description = concatnl( &
        & " Enter the frequency at which the fluxlimit is imposed [MHz]: ")
-  fluxlim_freq = parse_double(handle, 'fluxlim_freq', default=1400.d0, descr=description)
+  fluxlim_freq = parse_double(handle, 'fluxlim_cont_freq', default=1400.d0, descr=description)
 
   description = concatnl( &
        & " Do you want to output the luminosities (0=no, 1=yes)? ")
@@ -178,6 +179,10 @@ program sampler
        & " Enter the name of the the output file directory:")
   outdir=  parse_string(handle, 'outdir', default='.', descr=description)
 
+  description = concatnl( &
+       & " Enter the name of the the input files directory:")
+  indir=  parse_string(handle, 'TRECSinputs', default='.', descr=description)
+
 
   description = concatnl( &
        & " Set the seed for random number generation (default=automatic)" )
@@ -185,6 +190,22 @@ program sampler
 
   ! end reading input parameters
 
+  !string formatting: eliminate spaces between path and file name
+  indir=ADJUSTL(indir)
+  l_indir=LEN_TRIM(indir)
+
+  !string formatting: eliminate spaces between path and file name
+  outdir=ADJUSTL(outdir)
+  l_outdir=LEN_TRIM(outdir)
+
+  ! rename output directory and create it if does not exist
+  rawdir=outdir(1:l_outdir)//'/raw_continuum'
+  rawdir=ADJUSTL(rawdir)
+  l_rawdir=LEN_TRIM(rawdir)
+  system_status = SYSTEM( 'mkdir -p '//rawdir(1:l_rawdir) )
+  if ( system_status /= 0 ) then
+     stop system_status
+  endif
 
   !***************************************************
   !Global filenames for the input data to be read:
@@ -192,38 +213,39 @@ program sampler
   !    AGNs
   !
   !effective spectral indices for AGNs
-  filename1='../../TRECS_Inputs/alphaeff/alphascaling_1.4_4.8.txt'
-  filename2='../../TRECS_Inputs/alphaeff/alphascaling_4.8_20.txt'
-  filename3='../../TRECS_Inputs/alphaeff/alphascaling_1.4_0.150.txt'
+  filename1=indir(1:l_indir)//'/TRECS_Inputs/alphaeff/alphascaling_1.4_4.8.txt'
+  filename2=indir(1:l_indir)//'/TRECS_Inputs/alphaeff/alphascaling_4.8_20.txt'
+  filename3=indir(1:l_indir)//'/TRECS_Inputs/alphaeff/alphascaling_1.4_0.150.txt'
 
 
 
   !polarization fractions, Galluzzi et l. and Hales et al. 
-  filename7='../../TRECS_Inputs/AGN_polafraction/Polfrac_AGNs_1e4_hales.dat' 
+  filename7=indir(1:l_indir)//'/TRECS_Inputs/AGN_polafraction/Polfrac_AGNs_1e4_hales.dat' 
 
   !characteristic luminosity: redshift bins
-  filename8='../../TRECS_Inputs/LF/CharLum/Characteristic_Luminosity/z_bins.dat'
+  filename8=indir(1:l_indir)//'/TRECS_Inputs/LF/CharLum/Characteristic_Luminosity/z_bins.dat'
 
   !Intrinsic AGN size distribution from DiPompeo et al.
-  filename9='../../TRECS_Inputs/LF/AGN_sizes_new.dat'  
+  filename9=indir(1:l_indir)//'/TRECS_Inputs/LF/AGN_sizes_new.dat'  
 
   !   SFGs
   !
   !dust SED
-  filename10='../../TRECS_Inputs/LF/SEDdust.dat'!nu, UVgal, spheroids, lens_spheroids
+  filename10=indir(1:l_indir)//'/TRECS_Inputs/LF/SEDdust.dat'!nu, UVgal, spheroids, lens_spheroids
 
   ! end filenames
   !**********************************************************
 
   !Seeding random number generators
   !Starts from a user-specified initial seed or from the execution clock
-
+  
   if (seed_fix ==-1) then
      call system_clock(count=ic4, count_rate=crate4, count_max=cmax4)
      do i=1,34
         seed(i)=ic4*i/12.+iseed  ! combining two clock readings to fill 12 seeds
      enddo
   else
+     seed_fix = 555 * seed_fix
      do i=1,34
         seed(i)=1284350*i+seed_fix  ! combining two clock readings to fill 12 seeds
      enddo
@@ -233,13 +255,6 @@ program sampler
 
   call random_seed(PUT=seed)  ! feeding to Poisson and Gaussian generator 
   rn=rand(iseed+807820) ! initialise random uniform generator
-
-
-
-  !string formatting: eliminate spaces between path anf file name
-  outdir=ADJUSTL(outdir)
-  l_outdir=LEN_TRIM(outdir)
-
 
   !simulation area 
   sim_area=sim_side*sim_side
@@ -505,7 +520,7 @@ program sampler
   close(iunit)
 
   !reading the first characteristic luminosity file to get dimension of files for later
-  AGN_filename='../../TRECS_Inputs/LF/CharLum/Characteristic_Luminosity/luminosity_0.01000.dat' 
+  AGN_filename=indir(1:l_indir)//'/TRECS_Inputs/LF/CharLum/Characteristic_Luminosity/luminosity_0.01000.dat' 
   Ncolumns=6
   Ncolumns_lf=Ncolumns
   nrows=rows_number(AGN_filename,1,nskip)
@@ -553,9 +568,6 @@ program sampler
      nreds_out=nreds_out+1
   endif
 
-
-
-
   ! names of AGN populations
   !  names(1)='FSRQ'
   !  names(2)='BLLac'
@@ -563,6 +575,8 @@ program sampler
 
   alphamed=(/-0.1,-0.1,-0.72/) ! median spectral index for the three populations. SS spectral index Bonato et al. 2021 
 
+  ! open summary file for wrapper
+  open(42, file = outdir(1:l_outdir)//'/slices_continuum.dat', status = 'new')
   do zi=1,nreds_out-1   ! Main redshift loop 
 
      z=redshifts(zi)
@@ -586,8 +600,8 @@ program sampler
         zstr=redshift_names(zi) ! redshift tag for files
 
         !files for AGN mass modelling
-        LERG_filename='../../TRECS_Inputs/AbundanceMatch/results_AGNs/AGNprob_LERG_z'//zstr//'.txt' 
-        HERG_filename='../../TRECS_Inputs/AbundanceMatch/results_AGNs/AGNprob_HERG_z'//zstr//'.txt' 
+        LERG_filename=indir(1:l_indir)//'/TRECS_Inputs/AbundanceMatch/results_AGNs/AGNprob_LERG_z'//zstr//'.txt' 
+        HERG_filename=indir(1:l_indir)//'/TRECS_Inputs/AbundanceMatch/results_AGNs/AGNprob_HERG_z'//zstr//'.txt' 
 
         !reading files for AGN mass modelling 
         Ncolumns=2
@@ -660,7 +674,7 @@ program sampler
                  frequencies_rest=frequencies*(1.+zlum) !freq in the rest frame (for K correction)
 
                  !read luminosities 
-                 AGN_filename='../../TRECS_Inputs/LF/CharLum/Characteristic_Luminosity/luminosity_'//zstr_long//'.dat'  
+                 AGN_filename=indir(1:l_indir)//'/TRECS_Inputs/LF/CharLum/Characteristic_Luminosity/luminosity_'//zstr_long//'.dat'  
                  call read_columns(AGN_filename,2,nrows_lf,Ncolumns_lf,nskip,data)
 
                  x=data(:,2) ! log of characteristic luminosity
@@ -1275,7 +1289,7 @@ program sampler
 
         !relation between L14 and mass of dark halo, from abundance matching
         ! reading from a file
-        SFR2Mh_filename='../../TRECS_Inputs/AbundanceMatch/results_LSFR/L2mh_z'//zstr//'.txt' 
+        SFR2Mh_filename=indir(1:l_indir)//'/TRECS_Inputs/AbundanceMatch/results_LSFR/L2mh_z'//zstr//'.txt' 
         Ncolumns=2
         nrows=rows_number(SFR2Mh_filename,1,nskip)
         Nfunction=nrows
@@ -1293,7 +1307,7 @@ program sampler
 
         !relation between SFR and stellar mass, from Aversa et al. 2015
         ! reading from a file
-        SFR2Mstar_filename='../../TRECS_Inputs/results_SFR_Mstar/SFR2mstar_z'//zstr//'.txt' 
+        SFR2Mstar_filename=indir(1:l_indir)//'/TRECS_Inputs/results_SFR_Mstar/SFR2mstar_z'//zstr//'.txt' 
         Ncolumns=2
         nrows=rows_number(SFR2Mstar_filename,1,nskip)
 
@@ -1314,7 +1328,7 @@ program sampler
 
 
         !Reading SFR rate functins, from Mancuso et al. 
-        SFR_filename='../../TRECS_Inputs/SFRF/SFRF_z'//zstr//'.dat'  
+        SFR_filename=indir(1:l_indir)//'/TRECS_Inputs/SFRF/SFRF_z'//zstr//'.dat'  
 
         Ncolumns=5
         nrows=rows_number(SFR_filename,1,nskip)
@@ -1694,8 +1708,10 @@ program sampler
 
         ! writing catalogue to disk
         if (Nsample_old /=0) then 
-           cat_filename=outdir(1:l_outdir)//'/catalogue_continuum_z'//zstr//'.fits'
+           cat_filename=rawdir(1:l_rawdir)//'/catalogue_continuum_z'//zstr//'.fits'
            call write_catalogue_new(cat_filename,catout,Ncat_common,tagnames,tunit,tform)
+           !write in summary file:
+           write(42,*)zstr
            ! catalogue written
            print*,'done'
            deallocate(catout)
@@ -1707,6 +1723,8 @@ program sampler
 
   enddo
 
+  ! close summary file (input data for wrapper)
+  close(42)
 
   ! free memory
   deallocate(poladistr,x3,px3,alphascaling_48_20,alphascaling_14_48,alphascaling_015_14)

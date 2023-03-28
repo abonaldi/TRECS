@@ -25,9 +25,9 @@ program wrapper
   implicit none
 
   real, parameter::sterad_deg=3283. 
-  character(LEN=filenamelen)::paramfile,description,dummy
-  character(LEN=filenamelen)::filename,outcat
-  character(LEN=filenamelen),allocatable::catfiles(:)
+  character(LEN=filenamelen)::paramfile,description,dummy,slice_file,arg,outdir,indir,tag
+  character(LEN=filenamelen)::filename,outcat,ctmp
+  character(LEN=filenamelen),allocatable::catfiles(:),zstr(:)
   character*16,allocatable::tagnames(:),tform(:),tunit(:)
   character*16::tagname
   character*16::lat_tag,lon_tag,x_tag,y_tag,x_tag_1,y_tag_1
@@ -36,15 +36,17 @@ program wrapper
   real(dp)::v(3),v0(3),v_diff(3),v_new(3)
   real(dp)::lat_astro,lon_astro,lat_temp,lon_temp,lat,lon,lat_target,lon_target
   real(dp)::thetam,phim,vnorm,dx,dy,dz,sim_side,sim_radius,pix_side_rad,npixels,npixtot
-  CHARACTER(LEN=5) :: output,output2,tag
+  CHARACTER(LEN=5) :: output,output2
   CHARACTER(LEN=10) ::output3
   CHARACTER(LEN=80), DIMENSION(1:120) :: header
   CHARACTER(LEN=80)::line
+  integer(I4B)::Nargs,l_tag,l_indir,l_outdir,l_str
+  integer(I4B),allocatable::l_catname(:)
   integer(I4B) :: nest,test(1)
   integer(I8B):: Nrows
   integer::Nfiles,i,Ncols,iostat,l,ii,l_tagname,i_lat,i_lon,i_x,i_y,i_x1,i_y1
-  integer status,unit,rows,nrows_i,readwrite,blocksize,hdutype,tfields
-  integer::bitpix,naxis,naxes ,jj,do_clustering
+  integer status,unit,rows,nrows_i,readwrite,blocksize,hdutype,tfields,IERR
+  integer::bitpix,naxis,naxes ,jj,do_flatuniform
   integer(I4B), dimension(:),  allocatable :: listpix,listpix_copy(:)
   integer(I4B)::nside,nlist,ipix,ipix2
   INTEGER, DIMENSION(8,2) :: values_time
@@ -63,33 +65,68 @@ program wrapper
   call system_clock(count=ic4, count_rate=crate4, count_max=cmax4)
   iseed=ic4
 
+  ! setting the random seed
+  call srand(iseed)
+
   call date_and_time(values = values_time(:,1))
 
   !1)input file:
   !  -bins in redshift
   !  -number of objects
-
-
-  if (nArguments() == 0) then
-     paramfile=''
-  else if (nArguments() == 1) then
-     call getArgument(1,paramfile)
-  else 
-     print '("Usage: exe: [parameter file name]")'
+  
+  ! parse command line arguments
+  Nargs = nArguments()
+  if (mod(Nargs,2) /= 0) then
+     print '(2a, /)', 'probable wrong command-line options'
+     call print_help()
      stop 1
   endif
+  i = 1
+  tag = 'continuum'
+  paramfile = ''
+  do while ( i <= Nargs )
+
+     call getArgument(i, arg)
+     select case (arg)
+     case ('-p', '--params')
+        i = i+1
+        call getArgument(i, paramfile)
+
+     case ('-t', '--tag')
+        i = i+1
+        call getArgument(i, tag)
+
+     case ('-h', '--help')
+        call print_help()
+        stop
+
+     case default
+        print '(2a, /)', 'unrecognised command-line option: ', arg
+        call print_help()
+        stop 1
+     end select
+     i = i+1
+
+  end do
 
   handle = parse_init(paramfile)
+  
   description = concatnl( &
-       & " Enter number of catalogue files ")
-  Nfiles = parse_int(handle, 'Nfiles', default=5, vmin=1, descr=description)
+       & " Enter the tag of input catalogues")
+  tag=parse_string(handle,'tag', default=tag, descr=description)
 
-  handle = parse_init(paramfile)
+  description = concatnl( &
+       & " Enter the output directory path")
+  outdir=parse_string(handle,'outdir', default='.', descr=description)
+
+  description = concatnl( &
+       & " Enter the input directory base path")
+  indir=parse_string(handle,'wrap_indir', default=outdir, descr=description)
+
   description = concatnl( &
        & " Enter the central latitude coordinate ")
   lat_target = parse_double(handle, 'lat_target', default=0.d0, vmin=-90.d0, vmax=90.d0,descr=description)
 
-  handle = parse_init(paramfile)
   description = concatnl( &
        & " Enter the central longitude coordinate ")
   lon_target = parse_double(handle, 'lon_target', default=0.d0, vmin=0.d0, vmax=360.d0,descr=description)
@@ -100,40 +137,55 @@ program wrapper
   ! to compute the sky area. for the random coordinates, the FoV is taken as a circle
 
   description = concatnl( &
-       & " Do you want to simulate clustering (only for a max size=5, 0=no, 1=yes)?")
-  do_clustering = parse_int(handle, 'do_clustering', default=0, vmax=1, descr=description)
+       & " Do you want to simulate coordinates with flat approximation (0=no, 1=yes)?")
+  do_flatuniform = parse_int(handle, 'do_flatuniform', default=0, vmax=1, descr=description)
 
-!!$  handle = parse_init(paramfile)
-!!$  description = concatnl( &
-!!$       & " Enter number of columns in files ")
-!!$  Ncols = parse_int(handle, 'Ncols', default=5, vmin=1, descr=description)
+  !string formatting: eliminate spaces between path and file name
+  tag=ADJUSTL(tag)
+  l_tag=LEN_TRIM(tag)
+  
+  indir=ADJUSTL(indir)
+  l_indir=LEN_TRIM(indir)
 
+  outdir=ADJUSTL(outdir)
+  l_outdir=LEN_TRIM(outdir)
+
+  ! cont the number of files to wrap from the summary slice file
+  slice_file = indir(1:l_indir)//'/slices_'//tag(1:l_tag)//'.dat'
+  open( UNIT=42, file=slice_file, status='old', form='formatted' )
+  Nfiles = 0
+  do while (ierr == 0)
+     Nfiles = Nfiles + 1
+     read(42, *, iostat=IERR) ctmp
+  end do
+  Nfiles = Nfiles - 1
+  print*, 'Number of files = ', Nfiles
   allocate(catfiles(Nfiles))
+  allocate(l_catname(Nfiles))
+  allocate(zstr(Nfiles))
 
   if (iostat /=0) then
      print*,'Error allocating filenames'
      stop
   endif
 
-
+  !here read zstr and write the input file names
+  rewind ( 42 )
   do i=1,NFiles
-     write(output3,"(i3)")i
-     output3=ADJUSTL(output3)
-     l=LEN_TRIM(output3)
-
-     dummy = 'cat'//output3(:l)
-     description = concatnl( &
-          & " Enter the name of the output catalogue")
-     catfiles(i)=parse_string(handle,dummy, default='', descr=description)
+     read( 42, '(a)') zstr(i)
+     zstr(i) = adjustl(zstr(i))
+     l_str = len_trim(zstr(i))
+     catfiles(i)=indir(1:l_indir)//'/raw_'//tag(1:l_tag)//'/catalogue_'//tag(1:l_tag)//'_z'//zstr(i)(1:l_str)//'.fits'
+     catfiles(i)=adjustl(catfiles(i))
+     l_catname(i) = len_trim(catfiles(i))
   enddo
+  close( 42 )
+  deallocate(zstr)
 
-  dummy = 'cat'//output(:l)
-  description = concatnl( &
-       & " Enter the name of the output catalogue")
-  outcat=parse_string(handle,'outcat', default='', descr=description)
+  outcat=outdir(1:l_outdir)//'/catalogue_'//tag(1:l_tag)//'_wrapped.fits'
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  call columns_catalogue(catfiles(1),Ncols,status)
+  call columns_catalogue(catfiles(1)(1:l_catname(1)),Ncols,status)
   
   if (status ==0) then 
      print*,'number of columns in file',Ncols
@@ -162,14 +214,14 @@ program wrapper
   Nrows=0
 
   do i=1,Nfiles
-     call rows_catalogue(catfiles(i),Ncols,nrows_i,tagnames,tunit)
+     call rows_catalogue(catfiles(i)(1:l_catname(i)),Ncols,nrows_i,tagnames,tunit)
      nrows=nrows+nrows_i
   enddo
   print*, 'total number of rows',Nrows
 
 
 
-  if (do_clustering==0) then
+  if (do_flatuniform==0) then
      !initialization necessary for generating random coordinates
      !getting the list of healpix pixels in the area
 
@@ -234,6 +286,7 @@ program wrapper
      filename=outcat
 
      !opening new file
+     unit = 66
      call ftgiou(unit,status)
      if (status .gt. 0) call printerror(status)
      !C     open the FITS file, with write access
@@ -267,7 +320,7 @@ program wrapper
 
 
 
-     select case(do_clustering)
+     select case(do_flatuniform)
 
      case(0)
         ! generate random coordinates for a disc of specified area 
@@ -276,14 +329,14 @@ program wrapper
         frow=1
         felem=1
         do ii=1,nfiles
-           print*,'copying catalogue',catfiles(ii)
-           call rows_catalogue(catfiles(ii),Ncols,nrows_i,tagnames,tunit)
+           print*,'copying catalogue',catfiles(ii)(1:l_catname(ii))
+           call rows_catalogue(catfiles(ii)(1:l_catname(ii)),Ncols,nrows_i,tagnames,tunit)
            allocate(data(nrows_i,Ncols),column(nrows_i))
-           call read_catalogue(catfiles(ii),Ncols,Nrows_i,data)
+           call read_catalogue(catfiles(ii)(1:l_catname(ii)),Ncols,Nrows_i,data)
            print*,'number of rows',nrows_i
            ! select a random pixel of the list
            do jj=1,nrows_i
-!print*,jj,nrows_i
+
               ipix=int(rand()*(nlist-1))+1  !extraction of one random pixel position
               call pix2ang_ring(nside,listpix(ipix),lat_astro,lon_astro)
 111           continue
@@ -338,13 +391,13 @@ program wrapper
         frow=1
         felem=1
         do ii=1,nfiles
-           print*,'copying catalogue',catfiles(ii)
+           print*,'copying catalogue',catfiles(ii)(1:l_catname(ii))
 
-           call rows_catalogue(catfiles(ii),Ncols,nrows_i,tagnames,tunit)
+           call rows_catalogue(catfiles(ii)(1:l_catname(ii)),Ncols,nrows_i,tagnames,tunit)
 
            allocate(data(nrows_i,Ncols),column(nrows_i))
 
-           call read_catalogue(catfiles(ii),Ncols,Nrows_i,data)
+           call read_catalogue(catfiles(ii)(1:l_catname(ii)),Ncols,Nrows_i,data)
 
            ! project coordinates on sphere and rotate to the chosen position
            do jj=1,nrows_i
@@ -387,6 +440,10 @@ program wrapper
      call ftclos(unit, status)
      call ftfiou(unit, status)
 
+     ! deallocate the raw catalogue names array
+     deallocate(catfiles)
+     deallocate(l_catname)
+
      !C     check for any error, and if so print out error messages
      if (status .gt. 0)call printerror(status)
 
@@ -401,4 +458,12 @@ program wrapper
           &           + values_time(8,1)/1000.
      PRINT*,"Total clock time [m]:",clock_time/60.
      PRINT*,"               "//code//" > Normal completion"
+
+   contains
+     subroutine print_help()
+       print '(a, /)', 'command-line options:'
+       print '(a)',    '  -p, --params /path/to/parameter_file.ini path to the input parameter file'
+       print '(a)',    '  -t, --tag tagname                        tag name'
+       print '(a, /)', '  -h, --help        print usage information and exit'
+     end subroutine print_help
    end program wrapper
