@@ -11,16 +11,14 @@
 # T. Ronconi 22/3/23 I/O mods and argument parsing
 
 
-
-
-
 from sklearn.neighbors import NearestNeighbors
 import numpy as np
 import os, glob, sys
 from astropy.io import fits
 import astropy
-from astropy.table import Table
+from astropy.table import Table,vstack
 from astropy.table import Column
+
 
 import time
  
@@ -250,19 +248,34 @@ for i in range(len(redshift_names)):
 
 
             #append non-matched cat2 source at the end of cat1                 
-            empty=cat2['x_coord_1'] #column used to check if this galaxy has been matched 
+            print('Appending')
+            allcols=cat2.colnames
+            
+            
+            empty=cat2['x_coord_1'] #column used to check if this galaxy has been matched
+            
+            #for i in range(nhaloes):
+            #    if (empty[i] != -100.):
+            #        row=cat2[i]
+            #        cat1.add_row(row)
+            
+            rows_add = []
             for i in range(nhaloes):
                 if (empty[i] != -100.):
                     row=cat2[i]
-                    cat1.add_row(row)
-                    
+                    rows_add.append(row)
+
+            cat1_add = Table(rows=rows_add,names=(allcols))
+            
+     
         if (ngals+nhaloes !=0):
             catout=Table()
             
             if (ngals ==0) and (nhaloes != 0):
                 catout=cat2 #rewrite cat2, but with the extra columns 
             else:
-                catout=cat1    
+                catout=vstack([cat1,cat1_add])
+                #catout=cat1
 
             # remove duplicate coordinates and redshifts from the final catalogue.
             # Those were all random uniform generation within the given ranges so
@@ -272,7 +285,7 @@ for i in range(len(redshift_names)):
                       
             print('writing updated catalogue file')
             catout.write(cat_name1_out,format='fits', overwrite = True)
-
+            
 # Writing redshift slices file
 with open(
         os.path.join(
