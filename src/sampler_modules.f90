@@ -1044,11 +1044,6 @@ logMstar=logNz+theta*log10(M1+M2)-2.
 
 starmass=logMstar*(1.+random_normal()/10.)
 
-!size_SF=(gamma_1*(Mstar)**alpha_1*(1.+Mstar/M0_1)**(beta_1-alpha_1))/1000.
-!sigma_lnR=sigma2+(sigma1-sigma2)/(1.+(Mstar/M0_sigma)**2.)
-!scat=random_normal()*sigma_lnR
-!size_SF=log(size_SF)+scat
-!size_SF=exp(size_SF)
 
 end function starmass
 
