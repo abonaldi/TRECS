@@ -241,10 +241,11 @@ for i in range(len(redshift_names)):
                                                                                  
                         jj_match=jj  #this is to flag the mass later to avoid repetitions
                       
-                        
+                        M2[indices[j,jj_match]]=-100. #flagging this mass so it cannot be reused
+
                         break
                 
-                        M2[indices[j,jj_match]]=-100. #flagging this mass so it cannot be reused
+                        
                 
 
 

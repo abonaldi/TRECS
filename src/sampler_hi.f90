@@ -35,7 +35,7 @@ program sampler
 
   real, parameter::  A=3.623, B=2.406,sigma_logv=0.0209!, ! Katz et al. 2018 Mb-vflat relation ,sigma_logv=0.0209!, ! Katz et al. 2018 Mb-vflat relation 
   !character variables
-  character(LEN=filenamelen)::paramfile,description,dummy,outdir,rawdir,MHI_filename,MHI2Mh_filename
+  character(LEN=filenamelen)::paramfile,description,dummy,outdir,rawdir
   character(LEN=filenamelen)::chline,filestat,cat_filename
   character(LEN=16),allocatable::tagnames(:),tunit(:),tform(:)
   CHARACTER(LEN=5) :: output,output2,tag
