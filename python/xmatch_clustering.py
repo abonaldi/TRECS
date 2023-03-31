@@ -215,7 +215,7 @@ for i in range(len(redshift_names)):
         
 
             #check if there is HI and if so read the MHI column
-            print(len(cat2))
+            
             #here I could take a portion of the DM catalogue for low masses to speed-up things 
 
             #apply a mass cut to DM catalogue 
@@ -232,20 +232,22 @@ for i in range(len(redshift_names)):
                 nbins=50
                 d_m1=np.histogram(M1,range=(minmass,maxmass),bins=nbins)
                 d_m2=np.histogram(M2,range=(minmass,maxmass),bins=nbins)
-                
+
+                #print('dm1',d_m1[0])
+                #print('dm2',d_m2[0])
+
                 #       TODO: avoid the case where d_m1=0
-                ratio=(d_m2[0]/d_m1[0]) #this is how many dark haloes per observable galaxy as a finction of mass
+                ratio=(d_m2[0]/(d_m1[0]+1)) #this is how many dark haloes per observable galaxy as a finction of mass
+
                 binning=d_m2[1]
                 
                 
                 thr=np.zeros(len(ratio))+1.
-                thr[(ratio>1.)]=1./ratio[ratio>1.]*1000.
-                
-                
+                thr[(ratio>1.)]=1./ratio[ratio>1.]*10000.
+
                 select=np.zeros(len(M2), dtype=bool) #vector to record the portion of the catalogue to keep for crossmatching
                 rnd=np.random.uniform(low=0, high=1, size=len(M2)) #TODO: control seed
-            
-       
+                
                 for k in range(len(M2)):
                     value=M2[k]
                     idx = (np.abs(binning - value)).argmin()
@@ -254,15 +256,27 @@ for i in range(len(redshift_names)):
 
                     if (rnd[k]<=thr[idx]):
                         select[k]=True
-                    
+
             
                 cat2=cat2[select] #selection of eligible haloes complete
                 M2 = M2[select]
                 rho2 = rho2[select]
+#                d_m2_new=np.histogram(M2,range=(minmass,maxmass),bins=nbins)
 
-                print('Number of sub-sampled objects (the 2 should be the same)',
-                      np.sum(select),len(cat2))
+#                print(d_m2_new[0])
+#                print(np.sum(d_m2_new[0]))
                 
+                print('Number of original DM haloes',
+
+len(rnd))
+                print('Number of sub-sampled DM haloes (the 2 should be the same)',
+                      np.sum(select),len(cat2))
+
+                print('Number of galaxies',
+                      len(cat1))
+
+
+
             ######## end thinning for speed-up
     
             # M2 = cat2['Mh']
@@ -380,7 +394,8 @@ for i in range(len(redshift_names)):
                                     break
       
                         M2[indices[j,jj_match]]=-100. #flagging this halo so it cannot be reused
-                ### end for k in range(ngals):
+                        
+                        ### end for k in range(ngals):
       
                 # update coordinates and redshift after associating with DM haloes
                 print('updating coordinate information')
