@@ -136,7 +136,7 @@ seed = None
 try :
     seed = 888 * int( content['seed'] )
 except KeyError :
-    pass :
+    pass
 except :
     raise
 rngen = np.random.default_rng( seed = seed )
