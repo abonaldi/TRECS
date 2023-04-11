@@ -247,7 +247,7 @@ for i in range(len(redshift_names)):
                 
                 
                 select=np.zeros(len(M2), dtype=bool) #vector to record the portion of the catalogue to keep for crossmatching
-                rnd=rng.uniform(low=0, high=1, size=len(M2)) #TODO: control seed -> done.
+                rnd=rngen.uniform(low=0, high=1, size=len(M2)) #TODO: control seed -> done.
             
        
                 for k in range(len(M2)):
