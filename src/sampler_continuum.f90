@@ -67,7 +67,7 @@ program sampler
   real(sp),allocatable::angles(:),sizes_3d(:),lums_copy(:),spot_dist(:),himass(:),mstar_copy(:)
   real(sp),allocatable::darkmass(:),latitudes(:),longitudes(:),mstar(:)
   real(sp),allocatable::samplex_run(:),redshifts(:),L14(:),SFRtab(:),mstartab(:)
-  real(sp),allocatable::masses_L14(:),redshifts_lum(:),samplex_slice(:)!,satellite_flag(:)
+  real(sp),allocatable::masses_L14(:),redshifts_lum(:),samplex_slice(:),ids(:)
   real(sp),allocatable::masses_lerg(:),masses_herg(:),lerg_p(:),herg_p(:)
   REAL(SP) :: clock_time,coo_max,coo_min,dlat,dlon,dz,delta_parall
   REAL(SP) ::deltaz,mu,flux14,dmtol,mgal,ncone_binned,m_star
@@ -80,7 +80,7 @@ program sampler
   !double precision variables
   real(dp)::sim_area,skyfrac
   real(dp)::sim_side
-  real(dp)::fluxlim,fluxlim_freq
+  real(dp)::fluxlim,fluxlim_freq,current_count
   real(dp),allocatable::data(:,:),x(:),px(:),dustsed(:,:),dif(:)
   real(dp),allocatable::data2(:,:),x2(:),px2(:),x3(:),px3(:)
   real(dp),allocatable::alphascaling_14_48(:,:),alphascaling_48_20(:,:),alphascaling_015_14(:,:)
@@ -370,20 +370,24 @@ program sampler
 
 
   !structure of the catalogue
-  Ncat_common=(2+save_lums)*Nfreq_out+19 !number of catalogue columns
+  Ncat_common=(2+save_lums)*Nfreq_out+20 !number of catalogue columns
   !  commmon format for SFGs and AGNs
 
   !creating tag names for the catalogue
   allocate(tagnames(Ncat_common),tunit(Ncat_common),tform(Ncat_common))
   j=1
+  ! Unique source ID
+  tagnames(j)='ID_cont'
+  tunit(j)='none'
+  j=2
   ! Luminosity at 1.4 GHz
   tagnames(j)='Lum1400'
   tunit(j)='log(erg/s/Hz)'
-  j=2
+  j=3
   ! SFR 
   tagnames(j)='logSFR'
   tunit(j)='log(Msun/yr)'
-  j=3
+  j=4
   ! total intensity flux density for all selected frequencies 
   do i=1,Nfreq_out
      write(output,"(i5)")int(frequencies(i+3))
@@ -496,7 +500,7 @@ program sampler
   !*************************
 
 
-
+  current_count=0. !number of sources generated for unique ID
 
   ! reading bin information for the AGN characteristic luminosity model
   nrows=rows_number(filename8,1,nskip)
@@ -867,7 +871,7 @@ program sampler
            !allocate arrays to store the other galaxy attributes
            allocate(Darkmass(Nsample),himass(Nsample),latitudes(Nsample),longitudes(Nsample),&
                 &z_gals(Nsample),sizes_3d(Nsample),sizes(Nsample),&
-                &angles(Nsample),spot_dist(Nsample),optclass(Nsample),mstar(Nsample),stat=iostat)
+                &angles(Nsample),spot_dist(Nsample),optclass(Nsample),mstar(Nsample),ids(Nsample),stat=iostat)
            if (iostat /=0) then
               print*,'Allocation error'
               stop
@@ -1154,7 +1158,8 @@ program sampler
               z_i=dble(z_gals(i))
               dim=sizes_3d(i)*sin_i/1000. ! size in Mpc corrected for view angle. 
               sizes(i)=theta_p(dim,z_i)
-
+              current_count=current_count+1.
+              ids(i)=current_count
            enddo
 
            print*,'coordinates'
@@ -1188,27 +1193,28 @@ program sampler
 
 
            endif
-           catout(1,jstart:jstart+Nsample-1)=samplex(1:Nsample)        !lum_1.4 GHz
-           catout(2,jstart:jstart+Nsample-1)=-100. !logSFR
-           catout(3:nfreq_out+1,jstart:jstart+Nsample-1)=radioflux(4:Nfreq,:)  ! total intensity
-           catout(nfreq_out+3:2*nfreq_out+2,jstart:jstart+Nsample-1)=polaflux(4:Nfreq,:)  !polarization
-           catout(2*nfreq_out+3,jstart:jstart+Nsample-1)=darkmass      ! dark mass
-           catout(2*nfreq_out+4,jstart:jstart+Nsample-1)=mstar         ! stellar mass
-           catout(2*nfreq_out+5,jstart:jstart+Nsample-1)=himass        ! hi mass
-           catout(2*nfreq_out+6,jstart:jstart+Nsample-1)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
-           catout(2*nfreq_out+7,jstart:jstart+Nsample-1)=longitudes
-           catout(2*nfreq_out+8,jstart:jstart+Nsample-1)=0. ! spherical coordinates - to be filled by wrapper
-           catout(2*nfreq_out+9,jstart:jstart+Nsample-1)=0. 
-           catout(2*nfreq_out+10,jstart:jstart+Nsample-1)=z_gals       ! redshift
-           catout(2*nfreq_out+11,jstart:jstart+Nsample-1)=sizes       ! projected angular size
-           catout(2*nfreq_out+12,jstart:jstart+Nsample-1)=-100.     !inclinations
-           catout(2*nfreq_out+13,jstart:jstart+Nsample-1)=-100.     !axis ratio
-           catout(2*nfreq_out+14,jstart:jstart+Nsample-1)=-100.      !bmaj (host)
-           catout(2*nfreq_out+15,jstart:jstart+Nsample-1)=-100.       !bmin (host)
-           catout(2*nfreq_out+16,jstart:jstart+Nsample-1)=-100.       !PA (of the host)
-           catout(2*nfreq_out+17,jstart:jstart+Nsample-1)=spot_dist   ! distance between bright spots (Rs)
-           catout(2*nfreq_out+18,jstart:jstart+Nsample-1)=ii+3        ! flag to identify population (FSRQ, BL-LAc, SS)
-           catout(2*nfreq_out+19,jstart:jstart+Nsample-1)=optclass        ! flag to identify optical 1 elliptical, 2 spiral
+           catout(1,jstart:jstart+Nsample-1)=ids(1:Nsample)        !
+           catout(2,jstart:jstart+Nsample-1)=samplex(1:Nsample)        !lum_1.4 GHz
+           catout(3,jstart:jstart+Nsample-1)=-100. !logSFR
+           catout(4:nfreq_out+2,jstart:jstart+Nsample-1)=radioflux(4:Nfreq,:)  ! total intensity
+           catout(nfreq_out+4:2*nfreq_out+3,jstart:jstart+Nsample-1)=polaflux(4:Nfreq,:)  !polarization
+           catout(2*nfreq_out+4,jstart:jstart+Nsample-1)=darkmass      ! dark mass
+           catout(2*nfreq_out+5,jstart:jstart+Nsample-1)=mstar         ! stellar mass
+           catout(2*nfreq_out+6,jstart:jstart+Nsample-1)=himass        ! hi mass
+           catout(2*nfreq_out+7,jstart:jstart+Nsample-1)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
+           catout(2*nfreq_out+8,jstart:jstart+Nsample-1)=longitudes
+           catout(2*nfreq_out+9,jstart:jstart+Nsample-1)=0. ! spherical coordinates - to be filled by wrapper
+           catout(2*nfreq_out+10,jstart:jstart+Nsample-1)=0. 
+           catout(2*nfreq_out+11,jstart:jstart+Nsample-1)=z_gals       ! redshift
+           catout(2*nfreq_out+12,jstart:jstart+Nsample-1)=sizes       ! projected angular size
+           catout(2*nfreq_out+13,jstart:jstart+Nsample-1)=-100.     !inclinations
+           catout(2*nfreq_out+14,jstart:jstart+Nsample-1)=-100.     !axis ratio
+           catout(2*nfreq_out+15,jstart:jstart+Nsample-1)=-100.      !bmaj (host)
+           catout(2*nfreq_out+16,jstart:jstart+Nsample-1)=-100.       !bmin (host)
+           catout(2*nfreq_out+17,jstart:jstart+Nsample-1)=-100.       !PA (of the host)
+           catout(2*nfreq_out+18,jstart:jstart+Nsample-1)=spot_dist   ! distance between bright spots (Rs)
+           catout(2*nfreq_out+19,jstart:jstart+Nsample-1)=ii+3        ! flag to identify population (FSRQ, BL-LAc, SS)
+           catout(2*nfreq_out+20,jstart:jstart+Nsample-1)=optclass        ! flag to identify optical 1 elliptical, 2 spiral
 
 
            ! compute intrinsic luminosities and store them in the catalogue if requested
@@ -1241,7 +1247,7 @@ program sampler
 
               enddo
 
-              catout(2*nfreq_out+20:3*nfreq_out+19,jstart:jstart+Nsample-1)=lums_save(4:Nfreq,:)
+              catout(2*nfreq_out+21:3*nfreq_out+20,jstart:jstart+Nsample-1)=lums_save(4:Nfreq,:)
 
               deallocate(lums_save,lums_i,freq_rest)
 
@@ -1251,7 +1257,7 @@ program sampler
 
            !free memory
            deallocate(radioflux,polaflux,samplex,darkmass,mstar,himass,latitudes,&
-                &longitudes,z_gals,sizes,sizes_3d,angles,spot_dist,optclass,stat=iostat)
+                &longitudes,z_gals,sizes,sizes_3d,angles,spot_dist,optclass,ids,stat=iostat)
            if (iostat/=0) then
               print*,'sampler: deallocation error'
               stop
@@ -1565,7 +1571,7 @@ program sampler
            allocate(Darkmass(Nsample),himass(Nsample)&
                 &,latitudes(Nsample),longitudes(Nsample),z_gals(Nsample),&
                 &sizes(Nsample),ellipticity1(Nsample),ellipticity2(Nsample)&
-                &,thetas(Nsample),optclass(Nsample),qrat(Nsample),stat=iostat)
+                &,thetas(Nsample),optclass(Nsample),qrat(Nsample),ids(Nsample),stat=iostat)
            if (iostat/=0) then
               print*,'sampler: allocation error'
               stop
@@ -1603,6 +1609,8 @@ program sampler
               ellipticity1(i)=sqrt(sizes(i)**2./q) ! apparent bmaj
               ellipticity2(i)=q*ellipticity1(i)     ! apparent bmin
               Thetas(i)=rand()*360. !PA in degs
+              current_count=current_count+1.
+              ids(i)=current_count
            enddo
 
 
@@ -1632,27 +1640,28 @@ program sampler
            endif
 
 
-           catout(1,jstart:jstart+Nsample-1)=-100. !Lum1400
-           catout(2,jstart:jstart+Nsample-1)=samplex(1:Nsample)        !logSFR
-           catout(3:nfreq_out+2,jstart:jstart+Nsample-1)=radioflux(4:Nfreq,:)  ! total intensity
-           catout(nfreq_out+3:2*nfreq_out+2,jstart:jstart+Nsample-1)=polaflux(4:Nfreq,:)  !polarization
-           catout(2*nfreq_out+3,jstart:jstart+Nsample-1)=darkmass      ! dark mass
-           catout(2*nfreq_out+4,jstart:jstart+Nsample-1)=mstar      ! stellar mass
-           catout(2*nfreq_out+5,jstart:jstart+Nsample-1)=himass      ! HI mass
-           catout(2*nfreq_out+6,jstart:jstart+Nsample-1)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
-           catout(2*nfreq_out+7,jstart:jstart+Nsample-1)=longitudes
-           catout(2*nfreq_out+8,jstart:jstart+Nsample-1)=0. ! spherical coordinates - to be filled by wrapper
-           catout(2*nfreq_out+9,jstart:jstart+Nsample-1)=0. 
-           catout(2*nfreq_out+10,jstart:jstart+Nsample-1)=z_gals
-           catout(2*nfreq_out+11,jstart:jstart+Nsample-1)=sizes  
-           catout(2*nfreq_out+12,jstart:jstart+Nsample-1)=inclinations
-           catout(2*nfreq_out+13,jstart:jstart+Nsample-1)=qrat
-           catout(2*nfreq_out+14,jstart:jstart+Nsample-1)=ellipticity1  !bmaj
-           catout(2*nfreq_out+15,jstart:jstart+Nsample-1)=ellipticity2  !bmin
-           catout(2*nfreq_out+16,jstart:jstart+Nsample-1)=thetas !PA
-           catout(2*nfreq_out+17,jstart:jstart+Nsample-1)=-100. !spot dist
-           catout(2*nfreq_out+18,jstart:jstart+Nsample-1)=ii !SGSs
-           catout(2*nfreq_out+19,jstart:jstart+Nsample-1)=optclass !early/late-type
+           catout(1,jstart:jstart+Nsample-1)=ids !Unique ID
+           catout(2,jstart:jstart+Nsample-1)=-100. !Lum1400
+           catout(3,jstart:jstart+Nsample-1)=samplex(1:Nsample)        !logSFR
+           catout(4:nfreq_out+3,jstart:jstart+Nsample-1)=radioflux(4:Nfreq,:)  ! total intensity
+           catout(nfreq_out+4:2*nfreq_out+3,jstart:jstart+Nsample-1)=polaflux(4:Nfreq,:)  !polarization
+           catout(2*nfreq_out+4,jstart:jstart+Nsample-1)=darkmass      ! dark mass
+           catout(2*nfreq_out+5,jstart:jstart+Nsample-1)=mstar      ! stellar mass
+           catout(2*nfreq_out+6,jstart:jstart+Nsample-1)=himass      ! HI mass
+           catout(2*nfreq_out+7,jstart:jstart+Nsample-1)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
+           catout(2*nfreq_out+8,jstart:jstart+Nsample-1)=longitudes
+           catout(2*nfreq_out+9,jstart:jstart+Nsample-1)=0. ! spherical coordinates - to be filled by wrapper
+           catout(2*nfreq_out+10,jstart:jstart+Nsample-1)=0. 
+           catout(2*nfreq_out+11,jstart:jstart+Nsample-1)=z_gals
+           catout(2*nfreq_out+12,jstart:jstart+Nsample-1)=sizes  
+           catout(2*nfreq_out+13,jstart:jstart+Nsample-1)=inclinations
+           catout(2*nfreq_out+14,jstart:jstart+Nsample-1)=qrat
+           catout(2*nfreq_out+15,jstart:jstart+Nsample-1)=ellipticity1  !bmaj
+           catout(2*nfreq_out+16,jstart:jstart+Nsample-1)=ellipticity2  !bmin
+           catout(2*nfreq_out+17,jstart:jstart+Nsample-1)=thetas !PA
+           catout(2*nfreq_out+18,jstart:jstart+Nsample-1)=-100. !spot dist
+           catout(2*nfreq_out+19,jstart:jstart+Nsample-1)=ii !SGSs
+           catout(2*nfreq_out+20,jstart:jstart+Nsample-1)=optclass !early/late-type
 
            ! compute intrinsic luminosities and store them in the catalogue if requested
            if (save_lums ==1) then
@@ -1688,7 +1697,7 @@ program sampler
               enddo
 
 
-              catout(2*nfreq_out+20:3*nfreq_out+19,jstart:jstart+Nsample-1)=lums_save(4:Nfreq,:)
+              catout(2*nfreq_out+21:3*nfreq_out+20,jstart:jstart+Nsample-1)=lums_save(4:Nfreq,:)
 
               deallocate(lums_save,lums_i,freq_rest)
            endif
@@ -1697,7 +1706,7 @@ program sampler
 
            deallocate(radioflux,polaflux,inclinations,samplex,darkmass,himass,&
                 &latitudes,longitudes,z_gals,sizes,lums,mstar,ellipticity1,&
-                &ellipticity2,optclass,qrat,thetas,stat=iostat)
+                &ellipticity2,optclass,qrat,ids,thetas,stat=iostat)
            if (iostat/=0) then
               print*,'sampler: deallocation error'
 
