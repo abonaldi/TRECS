@@ -131,6 +131,16 @@ except KeyError :
 except :
     raise
 
+# Read the general random seed and initialize random number generator:
+seed = None
+try :
+    seed = 888 * int( content['seed'] )
+except KeyError :
+    pass
+except :
+    raise
+rngen = np.random.default_rng( seed = seed )
+
 ################################################################
 # Hard-coded settings
 
@@ -246,8 +256,10 @@ for i in range(len(redshift_names)):
                 thr[(ratio>1.)]=1./ratio[ratio>1.]*10000.
 
                 select=np.zeros(len(M2), dtype=bool) #vector to record the portion of the catalogue to keep for crossmatching
-                rnd=np.random.uniform(low=0, high=1, size=len(M2)) #TODO: control seed
                 
+                rnd=rngen.uniform(low=0, high=1, size=len(M2)) #TODO: control seed -> done.
+            
+       
                 for k in range(len(M2)):
                     value=M2[k]
                     idx = (np.abs(binning - value)).argmin()
