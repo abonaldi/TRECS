@@ -46,13 +46,13 @@ program sampler
   CHARACTER(LEN=4) ::zstr
 
   !single precision variables
-  real(sp)::z_min,z_max,mu,clock_time,coo_max,coo_min
+  real(sp)::z_min,z_max,mu,clock_time,coo_max,coo_min,current_count
   real(sp)::masslim,fluxlim,dm_model,dim,sin_i,cos_i
   real(sp)::q,q2,d_a,flux,flux_conv,rn,C_evol,log_vflat,stellar_mass,baryonic_mass
   real(sp),allocatable::samplex(:),samplex_slice(:),samplex_copy(:),redshifts(:)
   real(sp),allocatable::zall_slice(:),zall_copy(:)
   real(sp),allocatable::catout(:,:),z_gals(:),sizes(:),fluxes(:),fluxes_slice(:),fluxes_copy(:)
-  real(sp),allocatable::darkmass(:),latitudes(:),longitudes(:),inclinations(:),w50(:),vmax(:),stellarmass(:)
+  real(sp),allocatable::darkmass(:),latitudes(:),longitudes(:),inclinations(:),w50(:),vmax(:),stellarmass(:),ids(:)
   real(sp),allocatable::bmaj(:),bmin(:),pa(:),qrat(:)
 
 
@@ -160,7 +160,8 @@ program sampler
   call random_seed(PUT=seed)  ! feeding to Poisson and Gaussian generator 
   rn=rand(iseed+807820) ! initialise random uniform generator
 
-
+  current_count=0. !initialise number of sources for unique ID
+  
   !string formatting: eliminate spaces between path and file name
   outdir=ADJUSTL(outdir)
   l_outdir=LEN_TRIM(outdir)
@@ -193,7 +194,8 @@ program sampler
 
 
   !structure of the catalogue
-  Ncat_hi=18 !
+  Ncat_hi=19 !
+  ! Unique ID
   !hi mass
   !hi flux
   !dark mass
@@ -217,6 +219,10 @@ program sampler
   !creating tag names for the catalogue and units
   allocate(tagnames(Ncat_hi),tunit(Ncat_hi),tform(Ncat_hi))
   j=1
+  !Unique ID
+  tagnames(j)='ID_HI'
+  tunit(j)='none'
+  j=j+1
   !HI mass
   tagnames(j)='MHI'
   tunit(j)='log(Msun)'
@@ -548,7 +554,7 @@ program sampler
         allocate(Darkmass(Nsample),stellarmass(Nsample),latitudes(Nsample),&
              &longitudes(Nsample),sizes(Nsample),&
              &inclinations(Nsample),qrat(Nsample),bmaj(Nsample),&
-             &bmin(Nsample),pa(Nsample),vmax(Nsample),w50(Nsample),stat=iostat)
+             &bmin(Nsample),pa(Nsample),vmax(Nsample),w50(Nsample),ids(Nsample),stat=iostat)
         if (iostat/=0) then
            print*,'sampler: allocation error'
            stop
@@ -613,7 +619,8 @@ program sampler
            !Katz et al. 2018 Mhalo-vflat relation 
            darkmass(i)=(Ah+random_normal()*sigma_ah)*log_vflat+Bh+random_normal()*0.292
 
-           
+           current_count=current_count+1.
+           ids(i)=current_count
         enddo
 
         !preparing to output the data in catalogue format
@@ -626,29 +633,30 @@ program sampler
            stop
         endif
 
-        catout(1,:)=samplex(1:Nsample)       ! HI mass
-        catout(2,:)=fluxes*1000. ! HI flux mJy/Hz
-        catout(3,:)=darkmass
-        catout(4,:)=stellarmass
-        catout(5,:)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
-        catout(6,:)=longitudes
-        catout(7,:)=0. ! spherical coordinates - to be filled by wrapper
-        catout(8,:)=0. 
-        catout(9,:)=z_gals
-        catout(10,:)=sizes  
-        catout(11,:)=inclinations
-        catout(12,:)=vmax
-        catout(13,:)=w50
-        catout(14,:)=qrat
-        catout(15,:)=bmaj
-        catout(16,:)=bmin
-        catout(17,:)=pa
-        catout(18,:)=2. ! all HI galaxies have spiral morphology - can be changed after cross-matching with continuum
+        catout(1,:)=ids       ! unique identifier
+        catout(2,:)=samplex(1:Nsample)       ! HI mass
+        catout(3,:)=fluxes*1000. ! HI flux mJy/Hz
+        catout(4,:)=darkmass
+        catout(5,:)=stellarmass
+        catout(6,:)=latitudes     !cartesian coordinates - to be projected on the sphere by wrapper
+        catout(7,:)=longitudes
+        catout(8,:)=0. ! spherical coordinates - to be filled by wrapper
+        catout(9,:)=0. 
+        catout(10,:)=z_gals
+        catout(11,:)=sizes  
+        catout(12,:)=inclinations
+        catout(13,:)=vmax
+        catout(14,:)=w50
+        catout(15,:)=qrat
+        catout(16,:)=bmaj
+        catout(17,:)=bmin
+        catout(18,:)=pa
+        catout(19,:)=2. ! all HI galaxies have spiral morphology - can be changed after cross-matching with continuum
 
     
         deallocate(samplex,fluxes,darkmass,stellarmass,&
              &latitudes,longitudes,z_gals,sizes,&
-             &inclinations,pa,qrat,bmin,bmaj,w50,vmax,stat=iostat)
+             &inclinations,pa,qrat,bmin,bmaj,w50,vmax,ids,stat=iostat)
         if (iostat/=0) then
            print*,'sampler: deallocation error'
 
