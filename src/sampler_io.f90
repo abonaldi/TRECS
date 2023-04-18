@@ -47,7 +47,7 @@ contains
     call FTGKEY(unit,'TFIELDS',test,comment,status)
     print*,test,status
 
-    if (status /=0)  call FTMAHD(unit,1,status)
+    if (status /=0)  call FTMAHD(unit,1,hdutype,status)
     
     print*,'ok',status
 
