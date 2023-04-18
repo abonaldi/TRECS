@@ -30,7 +30,7 @@ program sampler
   REAL, PARAMETER :: pc=3.0856776E18 !Pc in cm
   real, parameter::sterad_deg=3283. 
   REAL, PARAMETER :: Mpc=10.**6*pc
-  real, parameter::  logmstar_0=9.94, alpha=-1.25,phistar=4.5e-3!, ! Jones et al. 2018 mass function parameters
+  real, parameter::  logmstar_0=9.94, alpha=-1.25,phistar_0=4.5e-3!, ! Jones et al. 2018 mass function parameters
   real, parameter::  Ah=2.902, Bh=5.439,sigma_ah=0.125!, ! Katz et al. 2018 Mh-vflat relation
 
   real, parameter::  A=3.623, B=2.406,sigma_logv=0.0209!, ! Katz et al. 2018 Mb-vflat relation ,sigma_logv=0.0209!, ! Katz et al. 2018 Mb-vflat relation 
@@ -48,7 +48,7 @@ program sampler
   !single precision variables
   real(sp)::z_min,z_max,mu,clock_time,coo_max,coo_min,current_count
   real(sp)::masslim,fluxlim,dm_model,dim,sin_i,cos_i
-  real(sp)::q,q2,d_a,flux,flux_conv,rn,C_evol,log_vflat,stellar_mass,baryonic_mass
+  real(sp)::q,q2,d_a,flux,flux_conv,rn,M_evol,phi_evol,log_vflat,stellar_mass,baryonic_mass
   real(sp),allocatable::samplex(:),samplex_slice(:),samplex_copy(:),redshifts(:)
   real(sp),allocatable::zall_slice(:),zall_copy(:)
   real(sp),allocatable::catout(:,:),z_gals(:),sizes(:),fluxes(:),fluxes_slice(:),fluxes_copy(:)
@@ -57,7 +57,8 @@ program sampler
 
 
 !!$  !double precision variables
-  real(dp)::nu,deltanu,sfr,mn,mx,volume,integ,volumetot,fom,fom_old,z_i,mhi,mstar,logmstar,phi
+  real(dp)::nu,deltanu,sfr,mn,mx,volume,integ,volumetot,fom,fom_old,z_i,mhi,mstar
+  real(dp)::logmstar,logphistar,phistar,phi
   real(dp)::sim_area,skyfrac,d_l
   real(dp)::sim_side
   real(dp),allocatable::data(:,:),x(:),px(:)
@@ -119,7 +120,12 @@ program sampler
 
   description = concatnl( &
        & " Enter the C_evol parameter: ")
-  C_evol = parse_real(handle, 'C_evol', default=0.075, descr=description)
+  M_evol = parse_real(handle, 'M_evol', default=-1.41, descr=description)
+
+    description = concatnl( &
+       & " Enter the C_evol parameter: ")
+  phi_evol = parse_real(handle, 'phi_evol', default=1.55, descr=description)
+
   
   description = concatnl( &
        & " Enter the minimum redhift to consider: ")
@@ -376,9 +382,11 @@ program sampler
         x = (/ (real(i), i=0,nrows_mf-1 ) /)
         x=x/10.+4.
 
-        logmstar=logmstar_0+C_evol*z ! redshift evolution of the mstar parameter
+        logmstar=logmstar_0+M_evol*z ! redshift evolution of the mstar parameter
+        logphistar=log10(phistar_0)+phi_evol*z ! redshift evolution of the mstar parameter
         mstar=10.**logmstar
-
+        phistar=10.**logphistar
+        
         !Jones et al. (2018) HI mass function with the redshift evolution of mstar
         do i=1,nrows_mf
            mhi=10.**x(i)
