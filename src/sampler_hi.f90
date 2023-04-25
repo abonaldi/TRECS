@@ -33,7 +33,7 @@ program sampler
   real, parameter::  logmstar_0=9.94, alpha=-1.25,phistar_0=4.5e-3!, ! Jones et al. 2018 mass function parameters
   real, parameter::  Ah=2.902, Bh=5.439,sigma_ah=0.125!, ! Katz et al. 2018 Mh-vflat relation
 
-  real, parameter::  A=3.623, B=2.406,sigma_logv=0.0209!, ! Katz et al. 2018 Mb-vflat relation ,sigma_logv=0.0209!, ! Katz et al. 2018 Mb-vflat relation 
+  real, parameter::  A=3.623, B=2.406,sigma_logv=0.021!, ! Katz et al. 2018 Mb-vflat relation 
   !character variables
   character(LEN=filenamelen)::paramfile,description,dummy,outdir,rawdir
   character(LEN=filenamelen)::chline,filestat,cat_filename
@@ -46,9 +46,10 @@ program sampler
   CHARACTER(LEN=4) ::zstr
 
   !single precision variables
-  real(sp)::z_min,z_max,mu,clock_time,coo_max,coo_min,current_count
+  real(sp)::z_min,z_max,mu,clock_time,coo_max,coo_min,current_count,Astar,Bstar
   real(sp)::masslim,fluxlim,dm_model,dim,sin_i,cos_i
-  real(sp)::q,q2,d_a,flux,flux_conv,rn,M_evol,phi_evol,log_vflat,stellar_mass,baryonic_mass
+  real(sp)::q,q2,d_a,flux,flux_conv,rn,M_evol,phi_evol,log_vflat,stellar_mass
+  real(sp)::pho_HI,pho_H2,M_HI,MH2_MHI,MHII,baryonic_mass
   real(sp),allocatable::samplex(:),samplex_slice(:),samplex_copy(:),redshifts(:)
   real(sp),allocatable::zall_slice(:),zall_copy(:)
   real(sp),allocatable::catout(:,:),z_gals(:),sizes(:),fluxes(:),fluxes_slice(:),fluxes_copy(:)
@@ -336,9 +337,22 @@ program sampler
   ! open summary file for wrapper
   open(42, file = outdir(1:l_outdir)//'/slices_HI.dat', status = 'new')
   ! main redshift loop
+
+  ! slope and normalization of MHI_Mstar relation
+  Astar=1.4 ! Naluminsa et al. z=0 relation
+  Bstar=-3.12 
   do zi=1,nreds_out-1
      z=redshifts(zi)
 
+     if (z >= 0.1) then
+        Astar=1.65
+        Bstar=-6.
+     endif
+     if (z >= 0.2) then
+        Astar=2.
+        Bstar=-9.
+     endif
+     
 
      if ((z_min <= z) .and. (z_max >= z)) then    ! redshift slice with center z is processed
 
@@ -393,6 +407,15 @@ program sampler
            px(i)=dble(log(10.)*phistar*(mhi/mstar)**(alpha+1.)*exp(-mhi/mstar))
         enddo
 
+
+        ! Walter et al. density of HI and H2 and a function of redshift
+        pho_HI=4.5e7*tanh(1.+z-2.8)+1.01e8
+        pho_H2=1.e7*(1.+z)**3./(1.+((1.+z)/2.3)**5.1)
+        MH2_MHI=pho_H2/pho_HI
+        print*,'MH2/MHI ratio',z,pho_HI,pho_H2,MH2_MHI
+
+
+        
         Nsample_old=0
         buffer_size=1000
         buffer_free=buffer_size
@@ -614,11 +637,23 @@ program sampler
 
            bmin(i)=q*bmaj(i)     ! apparent bmin
            pa(i)=rand()*360. !random PA in degs
+           M_HI=samplex(i)
+           stellar_mass=M_HI*Astar+Bstar 
 
-           stellar_mass=(samplex(i)-2.4)*1./(0.71)
            stellarmass(i)=stellar_mass
-           baryonic_mass=log10(10.**stellar_mass+10.**samplex(i))
 
+           MHII=stellar_mass-0.6*stellar_mass+5.2 !linear fit to Popping Fig 2 log(MHII/Mstar) vs logMstar
+                      
+           
+           if (MHII > M_HI) MHII=M_HI
+           baryonic_mass=log10(10.**stellar_mass+10.**MHII+10.**M_HI*(1.+MH2_MHI))
+
+           !baryonic_mass=log10(10.**stellar_mass+10.**M_HI*()+10.**MHII)
+
+           !print*,M_HI,stellar_mass, MHII
+           !print*,baryonic_mass
+    !       stop
+           
            ! vmax nd w50 model Katz et al. 2018 Mbarion-vflat relation
            log_vflat=1./A*(baryonic_mass-B)+random_normal()*sigma_logv
            
