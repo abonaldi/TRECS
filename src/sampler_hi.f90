@@ -49,7 +49,7 @@ program sampler
   CHARACTER(LEN=4) ::zstr
 
   !single precision variables
-  real(sp)::z_min,z_max,mu,clock_time,coo_max,coo_min,current_count,Astar,Bstar
+  real(sp)::z_min,z_max,mu,clock_time,coo_max,coo_min,current_count
   real(sp)::masslim,fluxlim,dm_model,dim,sin_i,cos_i
   real(sp)::q,q2,d_a,flux,flux_conv,rn,M_evol,phi_evol,log_vflat,stellar_mass
   real(sp)::pho_HI,pho_H2,M_HI,MH2_MHI,MHII,baryonic_mass
