@@ -30,10 +30,13 @@ program sampler
   REAL, PARAMETER :: pc=3.0856776E18 !Pc in cm
   real, parameter::sterad_deg=3283. 
   REAL, PARAMETER :: Mpc=10.**6*pc
-  real, parameter::  logmstar_0=9.94, alpha=-1.25,phistar=4.5e-3!, ! Jones et al. 2018 mass function parameters
+  real, parameter::  logmstar_0=9.94, alpha=-1.25,phistar_0=4.5e-3!, ! Jones et al. 2018 mass function parameters
   real, parameter::  Ah=2.902, Bh=5.439,sigma_ah=0.125!, ! Katz et al. 2018 Mh-vflat relation
 
-  real, parameter::  A=3.623, B=2.406,sigma_logv=0.0209!, ! Katz et al. 2018 Mb-vflat relation ,sigma_logv=0.0209!, ! Katz et al. 2018 Mb-vflat relation 
+  real, parameter::  A=3.623, B=2.406,sigma_logv=0.125!, ! Katz et al. 2018 Mb-vflat relation
+
+  real, parameter::  Astar=1.41, Bstar=-3.13 ! Naluminsa et al. inverse Mstar-MHI relation
+  
   !character variables
   character(LEN=filenamelen)::paramfile,description,dummy,outdir,rawdir
   character(LEN=filenamelen)::chline,filestat,cat_filename
@@ -48,7 +51,8 @@ program sampler
   !single precision variables
   real(sp)::z_min,z_max,mu,clock_time,coo_max,coo_min,current_count
   real(sp)::masslim,fluxlim,dm_model,dim,sin_i,cos_i
-  real(sp)::q,q2,d_a,flux,flux_conv,rn,C_evol,log_vflat,stellar_mass,baryonic_mass
+  real(sp)::q,q2,d_a,flux,flux_conv,rn,M_evol,phi_evol,log_vflat,stellar_mass
+  real(sp)::pho_HI,pho_H2,M_HI,MH2_MHI,MHII,baryonic_mass
   real(sp),allocatable::samplex(:),samplex_slice(:),samplex_copy(:),redshifts(:)
   real(sp),allocatable::zall_slice(:),zall_copy(:)
   real(sp),allocatable::catout(:,:),z_gals(:),sizes(:),fluxes(:),fluxes_slice(:),fluxes_copy(:)
@@ -57,7 +61,8 @@ program sampler
 
 
 !!$  !double precision variables
-  real(dp)::nu,deltanu,sfr,mn,mx,volume,integ,volumetot,fom,fom_old,z_i,mhi,mstar,logmstar,phi
+  real(dp)::nu,deltanu,sfr,mn,mx,volume,integ,volumetot,fom,fom_old,z_i,mhi,mstar
+  real(dp)::logmstar,logphistar,phistar,phi
   real(dp)::sim_area,skyfrac,d_l
   real(dp)::sim_side
   real(dp),allocatable::data(:,:),x(:),px(:)
@@ -119,7 +124,12 @@ program sampler
 
   description = concatnl( &
        & " Enter the C_evol parameter: ")
-  C_evol = parse_real(handle, 'C_evol', default=0.075, descr=description)
+  M_evol = parse_real(handle, 'M_evol', default=-1.41, descr=description)
+
+    description = concatnl( &
+       & " Enter the C_evol parameter: ")
+  phi_evol = parse_real(handle, 'phi_evol', default=1.55, descr=description)
+
   
   description = concatnl( &
        & " Enter the minimum redhift to consider: ")
@@ -330,6 +340,9 @@ program sampler
   ! open summary file for wrapper
   open(42, file = outdir(1:l_outdir)//'/slices_HI.dat', status = 'new')
   ! main redshift loop
+
+  ! slope and normalization of MHI_Mstar relation
+  
   do zi=1,nreds_out-1
      z=redshifts(zi)
 
@@ -376,15 +389,27 @@ program sampler
         x = (/ (real(i), i=0,nrows_mf-1 ) /)
         x=x/10.+4.
 
-        logmstar=logmstar_0+C_evol*z ! redshift evolution of the mstar parameter
+        logmstar=logmstar_0+M_evol*z ! redshift evolution of the mstar parameter
+        logphistar=log10(phistar_0)+phi_evol*z ! redshift evolution of the phistar parameter
         mstar=10.**logmstar
-
+        phistar=10.**logphistar
+        
         !Jones et al. (2018) HI mass function with the redshift evolution of mstar
         do i=1,nrows_mf
            mhi=10.**x(i)
            px(i)=dble(log(10.)*phistar*(mhi/mstar)**(alpha+1.)*exp(-mhi/mstar))
         enddo
 
+
+        ! Walter et al. density of HI and H2 and a function of redshift
+        ! this is later used to infer total baryonic mass from HI mass
+        pho_HI=4.5e7*tanh(1.+z-2.8)+1.01e8
+        pho_H2=1.e7*(1.+z)**3./(1.+((1.+z)/2.3)**5.1)
+        MH2_MHI=pho_H2/pho_HI
+!        print*,'MH2/MHI ratio',z,pho_HI,pho_H2,MH2_MHI
+
+
+        
         Nsample_old=0
         buffer_size=1000
         buffer_free=buffer_size
@@ -607,15 +632,27 @@ program sampler
            bmin(i)=q*bmaj(i)     ! apparent bmin
            pa(i)=rand()*360. !random PA in degs
 
-           stellar_mass=(samplex(i)-2.4)*1./(0.71)
-           stellarmass(i)=stellar_mass
-           baryonic_mass=log10(10.**stellar_mass+10.**samplex(i))
 
-           ! vmax nd w50 model Katz et al. 2018 Mbarion-vflat relation
+           ! Modelling of stellar mass, Baryonic mass
+           M_HI=samplex(i)
+           
+           stellar_mass=M_HI*Astar+Bstar
+          
+           stellarmass(i)=stellar_mass
+
+           MHII=stellar_mass-0.6*stellar_mass+5.2 !linear fit to Popping Fig 2 log(MHII/Mstar) vs logMstar
+                      
+           
+           if (MHII > M_HI) MHII=M_HI
+
+           baryonic_mass=log10(10.**stellar_mass+10.**MHII+10.**M_HI*(1.+MH2_MHI))
+
+           ! modelling rotation based on baryonic mass
            log_vflat=1./A*(baryonic_mass-B)+random_normal()*sigma_logv
            
            vmax(i)=10.**log_vflat
            w50(i)=vmax(i)*2.*sin(inclinations(i)*pi/180.)
+
            !Katz et al. 2018 Mhalo-vflat relation 
            darkmass(i)=(Ah+random_normal()*sigma_ah)*log_vflat+Bh+random_normal()*0.292
 

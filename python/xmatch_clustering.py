@@ -139,7 +139,9 @@ except KeyError :
     pass
 except :
     raise
-rngen = np.random.default_rng( seed = seed )
+
+#rngen = np.random.default_rng( seed = seed )
+np.random.seed( seed = seed )
 
 ################################################################
 # Hard-coded settings
@@ -192,7 +194,7 @@ for i in range(len(redshift_names)):
     
     z=redshift_names[i]
 
-    if (np.float(z) >= zmin) and (np.float(z) < zmax):
+    if (np.float(z) >= zmin) and (np.float(z) <= zmax):
         print('********************')
         print('Processing redshift',z)
         print('********************')
@@ -257,8 +259,9 @@ for i in range(len(redshift_names)):
 
                 select=np.zeros(len(M2), dtype=bool) #vector to record the portion of the catalogue to keep for crossmatching
                 
-                rnd=rngen.uniform(low=0, high=1, size=len(M2)) #TODO: control seed -> done.
-            
+                
+                rnd=np.random.uniform(low=0, high=1, size=len(M2))
+                
        
                 for k in range(len(M2)):
                     value=M2[k]
