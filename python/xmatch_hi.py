@@ -128,7 +128,7 @@ for i in range(len(redshift_names)):
 
     z=redshift_names[i]
 
-    if (np.float(z) >= zmin) and (np.float(z) <= zmax):
+    if (float(z) >= zmin) and (float(z) <= zmax):
 
         # for final slices file
         mask_z[i] = True
