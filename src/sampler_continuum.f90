@@ -75,7 +75,7 @@ program sampler
   real(sp)::dim,lum_threshold,theta_high,theta_low,sin_i,cos_i,logs,alpha_low
   real(sp)::alpha_high,minfreq,norm_f,dlogl,col,b,a,arg1,arg2,th,freq_norm
   real(sp)::minm(Nmbins),maxm(Nmbins),mc(1),halfmax(1),mw(1),sg_m(1)
-  real(sp)::a_sfr,b_sfr
+  real(sp)::a_sfr,b_sfr,a2_sfr,sturn_sfr,dpl
   real(sp),parameter::sigma_alpha=2.35660,mean_alpha=0.609847 
 
   !double precision variables
@@ -1599,11 +1599,28 @@ program sampler
               longitudes(i)=(rand()-0.5)*sim_side
               z_gals(i)=rand()*(zhigh-zlow)+zlow
 
-              !if (z_gals(i) <=0.525) himass(i)=(0.9-z_gals(i)*0.4)*samplex(i)+9.15+0.075*z_gals(i)+random_normal()*0.3 !derived by comparing mass distribution of hi and continuum.
-              ! obtained with aboundance-matching of M_HI with evolution as in Paul et al. 2023
-              a_sfr=1.1-2.46*z_gals(i)+2.06*z_gals(i)**2.
-              b_sfr=9.5-z_gals(i)
-              if (z_gals(i) <=0.525) himass(i)=samplex(i)*a_sfr+b_sfr+random_normal()*0.2
+              ! recipe implemented in Master
+              !a_sfr=1.1-2.46*z_gals(i)+2.06*z_gals(i)**2.
+              !b_sfr=9.5-z_gals(i)
+              !if (z_gals(i) <=0.525) himass(i)=samplex(i)*a_sfr+b_sfr+random_normal()*0.2
+
+
+              ! new recipe: with abundance matching of HI distribution vs predicted Hi distribution, but using a double power law instead of a power law
+
+             
+
+              a_sfr=1.28-2.79*z_gals(i)+2.0*z_gals(i)**2.
+              a2_sfr=-0.59+1.56*z_gals(i)-1.34*z_gals(i)**2.
+              b_sfr=9.42-0.73*z_gals(i)
+              sturn_sfr=0.102
+              sfr=10.**samplex(i)
+              dpl=10.**b_sfr*sfr**a_sfr*(sfr+sturn_sfr)**a2_sfr
+
+              !print*,samplex(i),log10(dpl)
+              !stop
+              if (z_gals(i) <=0.525) himass(i)=log10(dpl)+random_normal()*0.2
+              
+
 
            enddo
 

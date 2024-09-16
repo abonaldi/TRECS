@@ -290,8 +290,8 @@ print*,ncol,status
 
 
     nrows=size(data(1,:))
-    print*,tagnames
-    stop
+    !print*,tagnames
+    !stop
 
 !!$print*,nrows,Ncol
 !!$stop
