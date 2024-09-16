@@ -47,8 +47,8 @@ program sampler
   character(LEN=filenamelen)::chline,filestat,cat_filename
   character(LEN=16),allocatable::tagnames(:),tunit(:),tform(:)
   character(LEN=10)::names(3)
-  CHARACTER(LEN=5) :: output,output2,tag
-  CHARACTER(LEN=10) ::output3
+  CHARACTER(LEN=5) :: output2,tag
+  CHARACTER(LEN=10) ::output3,output
   CHARACTER(LEN=80), DIMENSION(1:120) :: header
   CHARACTER(LEN=7)::line,col_str,zstr_long
   CHARACTER(LEN=4),allocatable::redshift_names(:)
@@ -391,21 +391,25 @@ program sampler
   j=4
   ! total intensity flux density for all selected frequencies 
   do i=1,Nfreq_out
-     write(output,"(i5)")int(frequencies(i+3))
+     write(output,"(i10)")int(frequencies(i+3))
      output=ADJUSTL(output)
      l=LEN_TRIM(output)
+     
      dummy = 'I'//output(:l)
+     if (l > 5) dummy = 'I'//output(:l-6)//'T'
      tagnames(j)=dummy
      tunit(j)='mJy'
      j=j+1
+
   enddo
 
   !polarised intensity for all selected frequencies
   do i=1,Nfreq_out
-     write(output,"(i5)")int(frequencies(i+3))
+     write(output,"(i10)")int(frequencies(i+3))
      output=ADJUSTL(output)
      l=LEN_TRIM(output)
      dummy = 'P'//output(:l)
+     if (l > 5) dummy = 'P'//output(:l-6)//'T'
      tagnames(j)=dummy
      tunit(j)='mJy'
      j=j+1
@@ -484,10 +488,11 @@ program sampler
      !optional tag names for the luminosities
      !Luminosity at all considered frequencies
      do i=1,Nfreq_out
-        write(output,"(i5)")int(frequencies(i+3))
+        write(output,"(i10)")int(frequencies(i+3))
         output=ADJUSTL(output)
         l=LEN_TRIM(output)
         dummy = 'L'//output(:l)
+        if (l > 5) dummy = 'L'//output(:l-6)//'T'
         tagnames(j)=dummy
         tunit(j)='log(erg/s/Hz)'
         j=j+1

@@ -874,7 +874,7 @@ subroutine Lsynch(nu,sfr,mstar,L)
 
 
     norm=2.6 !early type 
-    if (ii == 1) norm=3. !late year
+    if (ii == 1) norm=3. !late type
 
     L_ir_simul=norm!*sfr
 

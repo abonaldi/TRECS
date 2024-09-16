@@ -290,7 +290,8 @@ print*,ncol,status
 
 
     nrows=size(data(1,:))
-    
+    print*,tagnames
+    stop
 
 !!$print*,nrows,Ncol
 !!$stop
@@ -400,7 +401,7 @@ print*,ncol,status
 
 
     nrows=size(data(1,:))
-    
+
 
 !!$print*,nrows,Ncol
 !!$stop
