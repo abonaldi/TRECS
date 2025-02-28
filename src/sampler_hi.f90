@@ -70,7 +70,7 @@ program sampler
   real(dp)::dx,xmin,xmax,zlow,zhigh,z
   integer*8::Nsample,test
   integer::buffer_size,buffer_free,jbuf,buffer_free_old,buffer_size_old,l_outdir,l_rawdir
-  integer::Nsample_old,Nfunction,Nsample_surv,nreds_out,nreds,Ncat_HI,nrows,Ncolumns,nrows_mf,nskip,zi
+  integer*8::Nsample_old,Nfunction,Nsample_surv,nreds_out,nreds,Ncat_HI,nrows,Ncolumns,nrows_mf,nskip,zi
   integer(4) :: ic4, crate4, cmax4!,ni,sum_plus,p14(1),i14,ilim,i48,p(1),p_i,try
   integer::seed(34),iseed,iostat,seed_fix
   INTEGER, DIMENSION(8,2) :: values_time
