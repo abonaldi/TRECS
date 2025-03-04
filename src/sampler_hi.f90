@@ -70,12 +70,12 @@ program sampler
   real(dp)::dx,xmin,xmax,zlow,zhigh,z
   integer*8::Nsample,test
   integer*8::buffer_size,buffer_free,jbuf,buffer_free_old,buffer_size_old,Nsample_old,Nsample_surv
-  integer::Nfunction,nreds_out,nreds,Ncat_HI,nrows,Ncolumns,nrows_mf,nskip,zi,l_outdir,l_rawdir
+  integer::Nfunction,nreds_out,nreds,nrows,Ncolumns,nrows_mf,nskip,zi,l_outdir,l_rawdir,Ncat_HI
   integer(4) :: ic4, crate4, cmax4!,ni,sum_plus,p14(1),i14,ilim,i48,p(1),p_i,try
   integer::seed(34),iseed,iostat,seed_fix
   INTEGER, DIMENSION(8,2) :: values_time
   integer::N,Nran,i,j!,reason,iunit
-  integer,allocatable::poisson_numbers(:)
+  integer*8,allocatable::poisson_numbers(:)
   logical::first=.true.
   integer::system_status
 
@@ -412,6 +412,7 @@ program sampler
         
         Nsample_old=0
         buffer_size=1000
+        print*,'Buffer size',buffer_size
         buffer_free=buffer_size
         jbuf=0 ! index to fill buffer 
 
@@ -438,17 +439,23 @@ program sampler
         enddo
         Nsample=sum(poisson_numbers) ! this is the number of galaxies to be generated
 
+
+        if (Nsample <0) then
+           print*,"Error: Nsample is negative!"
+           stop
+        endif
         !Nothing to be done if there are no galaxies
         if (Nsample==0) then
            deallocate(poisson_numbers)
            goto 500
         endif
-
+        print*,'Nsample',Nsample
         if (Nsample < buffer_size) buffer_size=Nsample
+        print*,'Buffer size=',buffer_size
 
         allocate(samplex(buffer_size),z_gals(buffer_size),fluxes(buffer_size)) 
         if (iostat/=0) then
-           print*,'sampler: allocation error'
+           print*,'sampler: buffer size allocation error'
            stop
         endif
 
@@ -471,7 +478,10 @@ program sampler
            if (xmin >= masslim) then  
 
 
-              allocate(samplex_slice(Nran),zall_slice(Nran),fluxes_slice(Nran))
+              allocate(samplex_slice(Nran),zall_slice(Nran),fluxes_slice(Nran),stat=iostat)
+              if (iostat /= 0.) then 
+                 print*,'allocation error slices!'
+              endif
 
               do j=1,Nran
                  samplex_slice(j)=rand()*(xmax-xmin)+xmin
@@ -492,19 +502,34 @@ program sampler
                  buffer_size=buffer_size_old+(buffer_size_old+Nsample_surv)*10
                  buffer_free=buffer_free+(buffer_size_old+Nsample_surv)*10
 
-                 allocate(samplex_copy(buffer_size_old),zall_copy(buffer_size_old),fluxes_copy(buffer_size_old))
+                 allocate(samplex_copy(buffer_size_old),zall_copy(buffer_size_old),fluxes_copy(buffer_size_old),stat=iostat)
+
+                 if (iostat /= 0.) then 
+                    print*,'allocation error sample copy!'
+                 endif
                  !radioflux_copy=radioflux
                  samplex_copy=samplex
                  zall_copy=z_gals
                  fluxes_copy=fluxes
 
-                 deallocate(samplex,z_gals,fluxes)
-                 allocate(samplex(buffer_size),z_gals(buffer_size),fluxes(buffer_size))
+                 deallocate(samplex,z_gals,fluxes,stat=iostat)
+                 if (iostat /= 0.) then 
+                    print*,'deallocation error samplex!'
+                 endif
+
+                 print*,'Buffer size',buffer_size
+                 allocate(samplex(buffer_size),z_gals(buffer_size),fluxes(buffer_size),stat=iostat)
+                 if (iostat /= 0.) then 
+                    print*,'allocation error samplex!'
+                 endif
                  samplex(1:buffer_size_old)=samplex_copy(:)
                  z_gals(1:buffer_size_old)=zall_copy(:)
                  fluxes(1:buffer_size_old)=fluxes_copy(:)
 
-                 deallocate(samplex_copy,zall_copy,fluxes_copy)
+                 deallocate(samplex_copy,zall_copy,fluxes_copy,stat=iostat)
+                 if (iostat /= 0.) then 
+                    print*,'deallocation error samplex copy!'
+                 endif
               endif
 
               ! fill buffer
@@ -521,7 +546,10 @@ program sampler
               enddo
               buffer_free=buffer_size-jbuf
 
-              deallocate(samplex_slice,zall_slice,fluxes_slice)
+              deallocate(samplex_slice,zall_slice,fluxes_slice,stat=iostat)
+              if (iostat /= 0.) then 
+                 print*,'deallocation error slice!'
+              endif
            endif
         enddo
 
