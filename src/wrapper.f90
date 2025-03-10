@@ -162,6 +162,7 @@ program wrapper
   endif
   open( UNIT=42, file=slice_file, status='old', form='formatted' )
   Nfiles = 0
+  ierr=0
   do while (ierr == 0)
      Nfiles = Nfiles + 1
      read(42, *, iostat=IERR) ctmp
